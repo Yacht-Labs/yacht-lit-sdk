@@ -1,0 +1,9 @@
+{
+  "name": "yacht-lit-sdk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@lit-protocol/sdk-nodejs": "^1.1.234"
+  }
+}
