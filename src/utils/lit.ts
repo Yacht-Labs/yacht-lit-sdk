@@ -1,5 +1,6 @@
 import { Wallet } from "@ethersproject/wallet";
 import { computeAddress } from "@ethersproject/transactions";
+import bs58 from "bs58";
 
 function makeNonce() {
   let result = "";
@@ -29,4 +30,10 @@ export async function generateAuthSig(
     signedMessage: messageToSign,
     address: wallet.address,
   };
+}
+
+export function getBytesFromMultihash(multihash: string): string {
+  const decoded = bs58.decode(multihash);
+
+  return `0x${Buffer.from(decoded).toString("hex")}`;
 }
