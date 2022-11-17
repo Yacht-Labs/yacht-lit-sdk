@@ -3,6 +3,7 @@ import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
 import uploadToIPFS from "./utils/ipfs";
+import { Signature } from "ethers";
 
 export class YachtLitSdk {
   public providerUrl: string;
@@ -65,7 +66,7 @@ export class YachtLitSdk {
     decimals: number;
     chainId: number;
     nonce: number;
-  }): Promise<Uint8Array> {
+  }) {
     // const erc20ContractInstance = new ethers.Contract(
     //   erc20Address,
     //   erc20Contract.abi,
@@ -98,7 +99,7 @@ export class YachtLitSdk {
         ethers.utils.arrayify(ethers.utils.serializeTransaction(tx)),
       ),
     );
-    return message;
+    return { serializedMessage: message, tx };
 
     // generate tx string here
     // has to have a nonce
