@@ -4,6 +4,8 @@ import { generateAuthSig } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
 import uploadToIPFS from "./utils/ipfs";
 import { Signature } from "ethers";
+import { arrayify, keccak256, SigningKey } from "ethers/lib/utils";
+import { serialize } from "@ethersproject/transactions";
 
 export class YachtLitSdk {
   public providerUrl: string;
@@ -47,67 +49,66 @@ export class YachtLitSdk {
     return generateAuthSig(this.privateKey, chainId, uri, version);
   }
 
-  async upLoadToIpfs(code: string) {
+  async uploadToIPFS(code: string) {
     //TODO: Figure out how to use version 17 of ipfs-core
     return uploadToIPFS(code);
   }
 
-  async generateUnsignedSwapTransaction({
-    erc20Address,
+  private generateTransferCallData(counterParty: string, amount: string) {
+    const transferInterface = new ethers.utils.Interface([
+      "function transfer(address, uint256) returns (bool)",
+    ]);
+    return transferInterface.encodeFunctionData("transfer", [
+      counterParty,
+      amount,
+    ]);
+  }
+
+  generateUnsignedERC20Transaction({
+    tokenAddress,
     counterPartyAddress,
     tokenAmount,
     decimals,
     chainId,
     nonce = 0,
+    highGas = false,
   }: {
-    erc20Address: string;
+    tokenAddress: string;
     counterPartyAddress: string;
     tokenAmount: string;
     decimals: number;
     chainId: number;
-    nonce: number;
+    nonce?: number;
+    highGas?: boolean;
   }) {
-    // const erc20ContractInstance = new ethers.Contract(
-    //   erc20Address,
-    //   erc20Contract.abi,
-    // );
-    // const transactionData =
-    //   await erc20ContractInstance.populateTransaction.transfer(
-    //     counterPartyAddress,
-    //     ethers.utils.parseUnits(tokenAmount, decimals).toString(),
-    //   );
-    const transferInterface = new ethers.utils.Interface([
-      "function transfer(address, uint256) returns (bool)",
-    ]);
-    const transactionData = transferInterface.encodeFunctionData("transfer", [
-      counterPartyAddress,
-      ethers.utils.parseUnits(tokenAmount, decimals).toString(),
-    ]);
-    const tx = {
-      to: erc20Address,
+    return {
+      to: tokenAddress,
       nonce: nonce,
-      value: 0,
-      maxFeePerGas: ethers.utils.parseUnits("100", "gwei"),
-      maxPriorityFeePerGas: ethers.utils.parseUnits("10", "gwei"),
-      gasLimit: 100000,
       chainId: chainId,
-      data: transactionData,
+      maxFeePerGas: ethers.utils.parseUnits(
+        `${highGas ? "204" : "102"}`,
+        "gwei",
+      ),
+      maxPriorityFeePerGas: ethers.utils.parseUnits(
+        `${highGas ? "200" : "100"}`,
+        "gwei",
+      ),
+      gasLimit: 1000000,
+      data: this.generateTransferCallData(
+        counterPartyAddress,
+        ethers.utils.parseUnits(tokenAmount, decimals).toString(),
+      ),
       type: 2,
     };
-    const message = ethers.utils.arrayify(
-      ethers.utils.keccak256(
-        ethers.utils.arrayify(ethers.utils.serializeTransaction(tx)),
-      ),
-    );
-    return { serializedMessage: message, tx };
+  }
 
-    // generate tx string here
-    // has to have a nonce
-    // how to know whether to set to 0 or 1
-
-    // alice can run SDK
-    // bob can run SDK
-
-    // need to create the transferABI Interface
+  public signTransaction(tx: any, privateKey: string) {
+    function getMessage(tx: any) {
+      return keccak256(arrayify(serialize(tx)));
+    }
+    const message = arrayify(getMessage(tx));
+    const signer = new SigningKey("0x" + privateKey);
+    const encodedSignature = signer.signDigest(message);
+    return serialize(tx, encodedSignature);
   }
 }
