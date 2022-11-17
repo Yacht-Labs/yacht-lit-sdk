@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import { Wallet } from "@ethersproject/wallet";
 import { computeAddress } from "@ethersproject/transactions";
 import bs58 from "bs58";
@@ -14,21 +15,19 @@ function makeNonce() {
 }
 
 export async function generateAuthSig(
-  privateKey: string,
+  signer: ethers.Signer,
   chainId = 1,
   uri = "https://localhost/login",
   version = 1,
 ) {
-  const messageToSign = `localhost wants you to sign in with your Ethereum account:\n${computeAddress(
-    privateKey,
+  const messageToSign = `localhost wants you to sign in with your Ethereum account:\n${signer.getAddress()},
   )}\n\nThis is a key for Yacht-Lit-SDK\n\nURI: ${uri}\nVersion: ${version}\nChain ID: ${chainId}\nNonce: ${makeNonce()}\nIssued At: ${new Date().toISOString()}`;
-  const wallet = new Wallet(privateKey);
-  const sig = await wallet.signMessage(messageToSign);
+  const sig = await signer.signMessage(messageToSign);
   return {
     sig,
     derivedVia: "web3.eth.personal.sign",
     signedMessage: messageToSign,
-    address: wallet.address,
+    address: signer.getAddress(),
   };
 }
 

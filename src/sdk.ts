@@ -8,28 +8,25 @@ import { arrayify, keccak256, SigningKey } from "ethers/lib/utils";
 import { serialize } from "@ethersproject/transactions";
 
 export class YachtLitSdk {
-  public providerUrl: string;
+  public provider: ethers.providers.JsonRpcProvider;
   public pkpContract: any; //TODO: Typechain contract typings
-  private privateKey: string; //TODO: Make safer?
+  private signer: ethers.Signer; //TODO: Make safer?
   private litClient: any;
   constructor(
-    providerUrl: string,
-    privateKey: string,
+    provider: ethers.providers.JsonRpcProvider,
+    signer: ethers.Signer,
     pkpContractAddress = "0x86062B7a01B8b2e22619dBE0C15cbe3F7EBd0E92", //TODO: Add to config?
     litNetwork?: string,
   ) {
-    this.providerUrl = providerUrl;
-    this.privateKey = privateKey;
+    this.provider = provider;
+    this.signer = signer;
     this.litClient = litNetwork
       ? new LitJsSdk.LitNodeClient({ litNetwork })
       : new LitJsSdk.LitNodeClient();
     this.pkpContract = new ethers.Contract(
       pkpContractAddress,
       pkpNftContract.abi,
-      new ethers.Wallet(
-        privateKey,
-        new ethers.providers.JsonRpcProvider(this.providerUrl),
-      ),
+      this.signer,
     );
   }
 
@@ -46,7 +43,7 @@ export class YachtLitSdk {
     uri = "https://localhost/login",
     version = 1,
   ) {
-    return generateAuthSig(this.privateKey, chainId, uri, version);
+    return generateAuthSig(this.signer, chainId, uri, version);
   }
 
   async uploadToIPFS(code: string) {
