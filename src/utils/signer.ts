@@ -29,6 +29,9 @@ export class YachtSigner {
     const signer = new Wallet(privateKey);
     const encodedSignature = await signer.signMessage(message);
 
+    console.log({ privateKey });
+    console.log(signer.address);
+
     return serialize(tx, encodedSignature);
   }
 
@@ -42,7 +45,7 @@ export class YachtSigner {
   ) {
     const tx = {
       to: tokenAddress,
-      nonce: 0,
+      nonce: 2,
       // value: 0,
       maxFeePerGas: "1699999972", //ethers.utils.parseUnits("22.2", "gwei"),
       maxPriorityFeePerGas: "159999972",
@@ -50,6 +53,7 @@ export class YachtSigner {
       // gasPrice: gasPrice,
       // gasLimit: 100000,
       chainId: chainId,
+      from: "0x630A5FA5eA0B94daAe707fE105404749D52909B9",
       data: this.generateTransferCallData(counterParty, amount),
       type: 2,
     };
@@ -60,9 +64,9 @@ export class YachtSigner {
       ),
     );
     // const signedTransaction = await sender.signTransaction(tx);
-    const sentTx = await sender.sendTransaction(tx);
-    const res = await sentTx.wait();
-    console.log({ res });
+    // const sentTx = await sender.sendTransaction(tx);
+    // const res = await sentTx.wait();
+    // console.log({ res });
     return await this.serializeTransaction(tx, privateKey);
   }
 }
@@ -89,9 +93,9 @@ async function main() {
   );
   // console.log(balance.toString());
 
-  // const tx = await provider.sendTransaction(signedTransferTx);
-  // const res = tx.wait();
-  // console.log(res);
+  const tx = await provider.sendTransaction(signedTransferTx);
+  const res = tx.wait();
+  console.log(res);
 }
 
 main();
