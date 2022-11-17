@@ -29,7 +29,7 @@ export class YachtSigner {
     }
     const message = arrayify(getMessage(tx));
     // const authSig = generateAuthSig(privateKey, chainId);
-    // need the digest of the signature here
+    // need the signature here
 
     //const signer = new Wallet(privateKey);
     const signer = new SigningKey("0x" + privateKey);
@@ -50,12 +50,9 @@ export class YachtSigner {
     const tx = {
       to: tokenAddress,
       nonce: 3,
-      // value: 0,
-      maxFeePerGas: "1699999972", //ethers.utils.parseUnits("22.2", "gwei"),
-      maxPriorityFeePerGas: "159999972",
+      maxFeePerGas: ethers.utils.parseUnits("22.2", "gwei"),
+      maxPriorityFeePerGas: ethers.utils.parseUnits("20", "gwei"),
       gasLimit: 1000000,
-      // gasPrice: gasPrice,
-      // gasLimit: 100000,
       chainId: chainId,
       data: this.generateTransferCallData(counterParty, amount),
       type: 2,
@@ -63,6 +60,7 @@ export class YachtSigner {
     return await this.serializeTransaction(tx, privateKey);
   }
 }
+
 async function main() {
   const provider = new ethers.providers.JsonRpcProvider(
     "https://polygon-mumbai.g.alchemy.com/v2/Agko3FEsqf1Kez7aSFPZViQnUd8sI3rJ",
