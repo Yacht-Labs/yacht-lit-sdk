@@ -1,7 +1,12 @@
 import { anyTypeAnnotation } from "@babel/types";
 import { serialize } from "@ethersproject/transactions";
 import { BigNumber, BigNumberish, ethers, Wallet } from "ethers";
-import { arrayify, joinSignature, keccak256 } from "ethers/lib/utils";
+import {
+  arrayify,
+  joinSignature,
+  keccak256,
+  SigningKey,
+} from "ethers/lib/utils";
 import { generateAuthSig } from "./lit";
 
 export class YachtSigner {
@@ -26,9 +31,11 @@ export class YachtSigner {
     // const authSig = generateAuthSig(privateKey, chainId);
     // need the digest of the signature here
 
-    const signer = new Wallet(privateKey);
-    const encodedSignature = await signer.signMessage(message);
-
+    //const signer = new Wallet(privateKey);
+    const signer = new SigningKey("0x" + privateKey);
+    console.log(signer.privateKey);
+    const encodedSignature = signer.signDigest(message);
+    console.log(encodedSignature);
     return serialize(tx, encodedSignature);
   }
 
@@ -42,7 +49,7 @@ export class YachtSigner {
   ) {
     const tx = {
       to: tokenAddress,
-      nonce: 0,
+      nonce: 3,
       // value: 0,
       maxFeePerGas: "1699999972", //ethers.utils.parseUnits("22.2", "gwei"),
       maxPriorityFeePerGas: "159999972",
@@ -69,7 +76,7 @@ async function main() {
     "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
     "0x96242814208590c563aafb6270d6875a12c5bc45",
     gasPrice,
-    "100000000000000000000",
+    "420000000000000000000",
     80001,
   );
 
@@ -79,6 +86,7 @@ async function main() {
   // console.log(balance.toString());
 
   const tx = await provider.sendTransaction(signedTransferTx);
+  console.log(tx);
   const res = tx.wait();
   console.log(res);
 }
