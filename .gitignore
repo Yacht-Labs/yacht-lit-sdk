@@ -3,3 +3,4 @@ dist
 src/tsRunner.ts
 artifacts
 cache
+typechain-types
