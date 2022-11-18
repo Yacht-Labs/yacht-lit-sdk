@@ -1,9 +1,9 @@
 {
   "name": "lit-swap-sdk",
-  "version": "1.0.12",
-  "main": "dist/index.js",
+  "version": "1.0.14",
+  "main": "dist/src/index.js",
   "repository": "https://github.com/Yacht-Labs/yacht-lit-sdk.git",
-  "types": "dist/index.d.ts",
+  "types": "dist/src/index.d.ts",
   "license": "MIT",
   "scripts": {
     "test": "jest",
