@@ -23,7 +23,7 @@ interface IPFSData {
   * @param { string } code
   * @returns { IPFSData } 
   */
-const uploadToIPFS = async (code: string): Promise<IPFSData> => {
+export const uploadToIPFS = async (code: string): Promise<IPFSData> => {
   const ipfs = await create({ repo: "ok" + Math.random() });
 
   const { path } = await ipfs.add(code);
@@ -35,5 +35,3 @@ const uploadToIPFS = async (code: string): Promise<IPFSData> => {
 
   return data;
 };
-
-export default uploadToIPFS;

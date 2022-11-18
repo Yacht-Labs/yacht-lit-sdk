@@ -1,21 +1,43 @@
+import { PKP_CONTRACT_ADDRESS_MUMBAIL } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
-import uploadToIPFS from "./utils/ipfs";
-import { Signature } from "ethers";
+import { uploadToIPFS } from "./utils/ipfs";
 import { arrayify, keccak256, SigningKey } from "ethers/lib/utils";
 import { serialize } from "@ethersproject/transactions";
+import { PKPNFT } from "../typechain-types/contracts";
+
+export type LitERC20SwapParams = {
+  tokenAddress: string;
+  counterPartyAddress: string;
+  tokenAmount: string;
+  decimals: number;
+  chainId: number;
+  nonce?: number;
+  highGas?: boolean;
+};
+
+export type LitErc20SwapTx = {
+  to: string;
+  nonce: number;
+  chainId: number;
+  maxFeePerGas: ethers.BigNumber;
+  maxPriorityFeePerGas: ethers.BigNumber;
+  gasLimit: number;
+  data: string;
+  type: number;
+};
 
 export class YachtLitSdk {
   public provider: ethers.providers.JsonRpcProvider;
-  public pkpContract: any; //TODO: Typechain contract typings
-  private signer: ethers.Signer; //TODO: Make safer?
+  public pkpContract: PKPNFT;
+  private signer: ethers.Signer;
   private litClient: any;
   constructor(
     provider: ethers.providers.JsonRpcProvider,
     signer: ethers.Signer,
-    pkpContractAddress = "0x86062B7a01B8b2e22619dBE0C15cbe3F7EBd0E92", //TODO: Add to config?
+    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAIL,
     litNetwork?: string,
   ) {
     this.provider = provider;
@@ -27,7 +49,7 @@ export class YachtLitSdk {
       pkpContractAddress,
       pkpNftContract.abi,
       this.signer,
-    );
+    ) as PKPNFT;
   }
 
   async connect() {
@@ -35,7 +57,7 @@ export class YachtLitSdk {
   }
 
   async getPubKeyByPKPTokenId(tokenId: string): Promise<string> {
-    return await this.pkpContract.getPubKey(tokenId);
+    return await this.pkpContract.getPubkey(tokenId);
   }
 
   async generateAuthSig(
@@ -69,15 +91,7 @@ export class YachtLitSdk {
     chainId,
     nonce = 0,
     highGas = false,
-  }: {
-    tokenAddress: string;
-    counterPartyAddress: string;
-    tokenAmount: string;
-    decimals: number;
-    chainId: number;
-    nonce?: number;
-    highGas?: boolean;
-  }) {
+  }: LitERC20SwapParams): LitErc20SwapTx {
     return {
       to: tokenAddress,
       nonce: nonce,
@@ -99,8 +113,8 @@ export class YachtLitSdk {
     };
   }
 
-  public signTransaction(tx: any, privateKey: string) {
-    function getMessage(tx: any) {
+  public signTransaction(tx: LitErc20SwapTx, privateKey: string) {
+    function getMessage(tx: LitErc20SwapTx) {
       return keccak256(arrayify(serialize(tx)));
     }
     const message = arrayify(getMessage(tx));
