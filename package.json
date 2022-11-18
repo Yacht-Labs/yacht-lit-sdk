@@ -1,7 +1,8 @@
 {
   "name": "lit-swap-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "dist/index.js",
+  "repository": "https://github.com/Yacht-Labs/yacht-lit-sdk.git",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
@@ -16,7 +17,9 @@
     "@lit-protocol/sdk-nodejs": "^1.1.234",
     "bs58": "^5.0.0",
     "ethers": "^5.7.2",
-    "ipfs-core": "^0.14.0"
+    "ipfs-core": "^0.14.0",
+    "@typechain/ethers-v5": "^10.1.1",
+    "@typechain/hardhat": "^6.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",
@@ -31,8 +34,6 @@
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.2",
     "@openzeppelin/contracts": "^4.8.0",
-    "@typechain/ethers-v5": "^10.1.1",
-    "@typechain/hardhat": "^6.1.4",
     "@types/jest": "^29.2.x",
     "@typescript-eslint/eslint-plugin": "^5.43.0",
     "@typescript-eslint/parser": "^5.43.0",
