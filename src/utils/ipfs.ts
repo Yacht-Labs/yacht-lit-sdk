@@ -1,6 +1,6 @@
 import { create } from "ipfs-core";
 
-interface IPFSData {
+export interface IPFSData {
   path: string;
   url: string;
 }

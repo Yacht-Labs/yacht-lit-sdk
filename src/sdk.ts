@@ -1,4 +1,4 @@
-import { PKP_CONTRACT_ADDRESS_MUMBAIL } from "./constants/index";
+import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig } from "./utils";
@@ -37,7 +37,7 @@ export class YachtLitSdk {
   constructor(
     provider: ethers.providers.JsonRpcProvider,
     signer: ethers.Signer,
-    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAIL,
+    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
     litNetwork?: string,
   ) {
     this.provider = provider;
@@ -70,7 +70,7 @@ export class YachtLitSdk {
 
   async uploadToIPFS(code: string) {
     //TODO: Figure out how to use version 17 of ipfs-core
-    return uploadToIPFS(code);
+    return await uploadToIPFS(code);
   }
 
   private generateTransferCallData(counterParty: string, amount: string) {
