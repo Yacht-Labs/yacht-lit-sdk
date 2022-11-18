@@ -1,6 +1,4 @@
 import { ethers } from "ethers";
-import { Wallet } from "@ethersproject/wallet";
-import { computeAddress } from "@ethersproject/transactions";
 import bs58 from "bs58";
 
 function makeNonce() {

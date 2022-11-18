@@ -1,13 +1,6 @@
-import { anyTypeAnnotation } from "@babel/types";
 import { serialize } from "@ethersproject/transactions";
-import { BigNumber, BigNumberish, ethers, Wallet } from "ethers";
-import {
-  arrayify,
-  joinSignature,
-  keccak256,
-  SigningKey,
-} from "ethers/lib/utils";
-import { generateAuthSig } from "./lit";
+import { BigNumber, ethers } from "ethers";
+import { arrayify, keccak256, SigningKey } from "ethers/lib/utils";
 
 export class YachtSigner {
   private static generateTransferCallData(
@@ -81,7 +74,6 @@ async function main() {
   const balance = await provider.getBalance(
     "0x630a5fa5ea0b94daae707fe105404749d52909b9",
   );
-  // console.log(balance.toString());
 
   const tx = await provider.sendTransaction(signedTransferTx);
   console.log(tx);
