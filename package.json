@@ -9,7 +9,8 @@
     "hardhat-test": "npx hardhat test",
     "build": "tsc --declaration",
     "lint": "eslint --ignore-path .eslintignore --ext .js,.ts .",
-    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\""
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
+    "postinstall": "typechain --target ethers-v5 --out-dir typechain-types/contracts './src/abis/*.json'"
   },
   "dependencies": {
     "@lit-protocol/sdk-nodejs": "^1.1.234",
