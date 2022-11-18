@@ -5,7 +5,8 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "test": "npx hardhat test && jest",
+    "test": "jest",
+    "hardhat-test": "npx hardhat test",
     "build": "tsc --declaration",
     "lint": "eslint --ignore-path .eslintignore --ext .js,.ts .",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\""
