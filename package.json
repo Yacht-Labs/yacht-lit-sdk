@@ -1,6 +1,6 @@
 {
   "name": "lit-swap-sdk",
-  "version": "1.0.1",
+  "version": "1.0.11",
   "main": "dist/index.js",
   "repository": "https://github.com/Yacht-Labs/yacht-lit-sdk.git",
   "types": "dist/index.d.ts",
@@ -19,7 +19,8 @@
     "ethers": "^5.7.2",
     "ipfs-core": "^0.14.0",
     "@typechain/ethers-v5": "^10.1.1",
-    "@typechain/hardhat": "^6.1.4"
+    "@typechain/hardhat": "^6.1.4",
+    "typechain": "^8.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",
@@ -52,7 +53,6 @@
     "solidity-coverage": "^0.8.2",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
-    "typechain": "^8.1.1",
     "typescript": "*"
   }
 }
