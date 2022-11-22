@@ -12,20 +12,27 @@ function makeNonce() {
   return result;
 }
 
+export type LitAuthSig = {
+  sig: string;
+  derivedVia: string;
+  signedMessage: string;
+  address: string;
+};
+
 export async function generateAuthSig(
   signer: ethers.Signer,
   chainId = 1,
   uri = "https://localhost/login",
   version = 1,
-) {
-  const messageToSign = `localhost wants you to sign in with your Ethereum account:\n${signer.getAddress()},
+): Promise<LitAuthSig> {
+  const messageToSign = `localhost wants you to sign in with your Ethereum account:\n${await signer.getAddress()},
   )}\n\nThis is a key for Yacht-Lit-SDK\n\nURI: ${uri}\nVersion: ${version}\nChain ID: ${chainId}\nNonce: ${makeNonce()}\nIssued At: ${new Date().toISOString()}`;
   const sig = await signer.signMessage(messageToSign);
   return {
     sig,
     derivedVia: "web3.eth.personal.sign",
     signedMessage: messageToSign,
-    address: signer.getAddress(),
+    address: await signer.getAddress(),
   };
 }
 

@@ -1,3 +1,4 @@
+import { getBytesFromMultihash, LitAuthSig } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
@@ -33,12 +34,12 @@ export class YachtLitSdk {
   public provider: ethers.providers.JsonRpcProvider;
   public pkpContract: PKPNFT;
   private signer: ethers.Signer;
-  private litClient: any;
+  public litClient: any;
   constructor(
     provider: ethers.providers.JsonRpcProvider,
     signer: ethers.Signer,
-    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
     litNetwork?: string,
+    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
   ) {
     this.provider = provider;
     this.signer = signer;
@@ -53,7 +54,52 @@ export class YachtLitSdk {
   }
 
   async connect() {
-    this.litClient.connect();
+    await this.litClient.connect();
+  }
+
+  async mintPKP() {
+    if (!this.signer.provider) {
+      throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
+    }
+    return await this.pkpContract.mintNext(2, { value: 1e14 });
+  }
+
+  async mintGrantBurnWithJs(litActionCode: string): Promise<{
+    ipfsCID: string;
+    pkp: {
+      tokenId: string;
+      publicKey: string;
+    };
+  }> {
+    const { path: ipfsCID } = await uploadToIPFS(litActionCode);
+    const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
+    const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
+    const pkpTokenId = ethers.BigNumber.from(
+      minedMintGrantBurnTx.logs[1].topics[3],
+    ).toString();
+    console.log("here");
+    const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+    console.log("there");
+    return {
+      ipfsCID,
+      pkp: {
+        tokenId: pkpTokenId,
+        publicKey: pkpPubKey,
+      },
+    };
+  }
+
+  async mintGrantBurn(ipfsCID: string) {
+    if (!this.signer.provider) {
+      throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
+    }
+    return await this.pkpContract.mintGrantAndBurnNext(
+      2,
+      getBytesFromMultihash(ipfsCID),
+      {
+        value: 1e14,
+      },
+    );
   }
 
   async getPubKeyByPKPTokenId(tokenId: string): Promise<string> {
@@ -66,6 +112,49 @@ export class YachtLitSdk {
     version = 1,
   ) {
     return generateAuthSig(this.signer, chainId, uri, version);
+  }
+
+  async mintPKPandExecuteJs(litActionCode: string) {
+    try {
+      const mintTx = await this.mintPKP();
+      const minedMintTx = await mintTx.wait();
+      const pkpTokenId = ethers.BigNumber.from(
+        minedMintTx.logs[1].topics[3],
+      ).toString();
+      const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+      const { path: ipfsCID } = await uploadToIPFS(litActionCode);
+      const authSig = await this.generateAuthSig();
+      await this.runLitAction(ipfsCID, authSig, pkpPubKey);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  async runLitAction(
+    ipfsCID: string,
+    authSig: LitAuthSig,
+    pkpPubKey: string,
+    conditions?: [{ [key: string]: any }],
+  ) {
+    try {
+      await this.connect();
+      const response = await this.litClient.executeJs({
+        ipfsId: ipfsCID,
+        authSig: authSig,
+        debug: true,
+        conditions: conditions,
+        jsParams: {
+          authSig: authSig,
+          chain: "mumbai",
+          publicKey: pkpPubKey,
+          sigName: "hello",
+          toSign: [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100],
+        },
+      });
+      return response;
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   async uploadToIPFS(code: string) {
