@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-const PROVIDER_URL = describe("Yacht-Lit SDK Tests", () => {
+describe("Yacht-Lit SDK Hardhat Tests", () => {
   describe("ERC20Transfer", () => {
     let YachtToken: any;
     let deployedYachtToken: any;

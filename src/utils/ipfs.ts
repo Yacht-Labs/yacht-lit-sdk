@@ -24,14 +24,18 @@ export interface IPFSData {
   * @returns { IPFSData } 
   */
 export const uploadToIPFS = async (code: string): Promise<IPFSData> => {
-  const ipfs = await create({ repo: "ok" + Math.random() });
+  try {
+    const ipfs = await create({ repo: "ok" + Math.random() });
 
-  const { path } = await ipfs.add(code);
+    const { path } = await ipfs.add(code);
 
-  const data: IPFSData = {
-    path: path,
-    url: `https://ipfs.litgateway.com/ipfs/${path}`,
-  };
+    const data: IPFSData = {
+      path: path,
+      url: `https://ipfs.litgateway.com/ipfs/${path}`,
+    };
 
-  return data;
+    return data;
+  } catch (err) {
+    throw new Error(`Error uploading to file to IPFS: ${err}`);
+  }
 };

@@ -30,6 +30,26 @@ export type LitErc20SwapTx = {
   type: number;
 };
 
+export type LitERC20SwapCondition = {
+  conditionType: "evmBasic";
+  contractAddress: string;
+  standardContractType: "ERC20";
+  chain: string; //TODO: can make ENUM
+  method: "balanceOf";
+  parameters: [string];
+  returnValueTest: {
+    comparator: ">";
+    value: string;
+  };
+};
+
+export type LitERC20SwapConditionParams = {
+  contractAddress: string;
+  chain: string;
+  amount: string;
+  decimals: string;
+};
+
 export class YachtLitSdk {
   public provider: ethers.providers.JsonRpcProvider;
   public pkpContract: PKPNFT;
@@ -54,7 +74,11 @@ export class YachtLitSdk {
   }
 
   async connect() {
-    await this.litClient.connect();
+    try {
+      await this.litClient.connect();
+    } catch (err) {
+      throw new Error(`Error connecting with LitJsSDK: ${err}`);
+    }
   }
 
   async mintPKP() {
@@ -64,46 +88,98 @@ export class YachtLitSdk {
     return await this.pkpContract.mintNext(2, { value: 1e14 });
   }
 
+  generateERC20SwapConditions(
+    ...conditionsParams: LitERC20SwapConditionParams[]
+  ): Array<LitERC20SwapCondition | { operator: "and" }> {
+    function generateConditions(
+      params: LitERC20SwapConditionParams,
+    ): LitERC20SwapCondition {
+      return {
+        conditionType: "evmBasic",
+        contractAddress: params.contractAddress,
+        standardContractType: "ERC20",
+        chain: params.chain,
+        method: "balanceOf",
+        parameters: ["address"],
+        returnValueTest: {
+          comparator: ">",
+          value: ethers.BigNumber.from(params.amount)
+            .mul(
+              ethers.BigNumber.from(10).pow(
+                ethers.BigNumber.from(params.decimals),
+              ),
+            )
+            .toString(),
+        },
+      };
+    }
+    if (conditionsParams.length === 0) {
+      throw new Error("No parameters provided to generate swap conditions");
+    }
+    return conditionsParams.flatMap((condition, i) => {
+      return i === conditionsParams.length - 1
+        ? [generateConditions(condition)]
+        : [generateConditions(condition), { operator: "and" }];
+    });
+  }
+
   async mintGrantBurnWithJs(litActionCode: string): Promise<{
     ipfsCID: string;
     pkp: {
       tokenId: string;
       publicKey: string;
+      compressedPublicKey: string;
     };
   }> {
-    const { path: ipfsCID } = await uploadToIPFS(litActionCode);
-    const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
-    const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
-    const pkpTokenId = ethers.BigNumber.from(
-      minedMintGrantBurnTx.logs[1].topics[3],
-    ).toString();
-    console.log("here");
-    const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
-    console.log("there");
-    return {
-      ipfsCID,
-      pkp: {
-        tokenId: pkpTokenId,
-        publicKey: pkpPubKey,
-      },
-    };
+    try {
+      const { path: ipfsCID } = await uploadToIPFS(litActionCode);
+      const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
+      const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
+      const pkpTokenId = ethers.BigNumber.from(
+        minedMintGrantBurnTx.logs[1].topics[3],
+      ).toString();
+      const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+      return {
+        ipfsCID,
+        pkp: {
+          tokenId: pkpTokenId,
+          publicKey: pkpPubKey,
+          compressedPublicKey: ethers.utils.computeAddress(pkpPubKey),
+        },
+      };
+    } catch (err) {
+      throw new Error(`Error in mintGrantBurnWithJs: ${err}`);
+    }
   }
 
   async mintGrantBurn(ipfsCID: string) {
     if (!this.signer.provider) {
       throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
     }
-    return await this.pkpContract.mintGrantAndBurnNext(
-      2,
-      getBytesFromMultihash(ipfsCID),
-      {
-        value: 1e14,
-      },
-    );
+    try {
+      return await this.pkpContract.mintGrantAndBurnNext(
+        2,
+        getBytesFromMultihash(ipfsCID),
+        {
+          value: 1e14,
+          maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
+          maxPriorityFeePerGas: ethers.utils
+            .parseUnits("100", "gwei")
+            .toString(),
+          gasLimit: "1000000",
+        },
+      );
+    } catch (err) {
+      throw new Error(`Error in mintGrantBurn: ${err}`);
+    }
   }
 
   async getPubKeyByPKPTokenId(tokenId: string): Promise<string> {
-    return await this.pkpContract.getPubkey(tokenId);
+    try {
+      return await this.pkpContract.getPubkey(tokenId);
+    } catch (err) {
+      throw new Error(`Error getting pkp public key: ${err}`);
+    }
   }
 
   async generateAuthSig(
@@ -114,41 +190,43 @@ export class YachtLitSdk {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
 
-  async mintPKPandExecuteJs(litActionCode: string) {
-    try {
-      const mintTx = await this.mintPKP();
-      const minedMintTx = await mintTx.wait();
-      const pkpTokenId = ethers.BigNumber.from(
-        minedMintTx.logs[1].topics[3],
-      ).toString();
-      const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
-      const { path: ipfsCID } = await uploadToIPFS(litActionCode);
-      const authSig = await this.generateAuthSig();
-      await this.runLitAction(ipfsCID, authSig, pkpPubKey);
-    } catch (err) {
-      console.log(err);
-    }
-  }
+  // async mintPKPandExecuteJs(litActionCode: string) {
+  //   try {
+  //     const mintTx = await this.mintPKP();
+  //     const minedMintTx = await mintTx.wait();
+  //     const pkpTokenId = ethers.BigNumber.from(
+  //       minedMintTx.logs[1].topics[3],
+  //     ).toString();
+  //     const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+  //     const { path: ipfsCID } = await uploadToIPFS(litActionCode);
+  //     const authSig = await this.generateAuthSig();
+  //     await this.runLitAction(ipfsCID, authSig, pkpPubKey);
+  //   } catch (err) {
+  //     console.log(err);
+  //   }
+  // }
 
   async runLitAction(
     ipfsCID: string,
     authSig: LitAuthSig,
     pkpPubKey: string,
-    conditions?: [{ [key: string]: any }],
+    conditions: any,
+    chain = "mumbai",
   ) {
     try {
       await this.connect();
       const response = await this.litClient.executeJs({
         ipfsId: ipfsCID,
         authSig: authSig,
-        debug: true,
-        conditions: conditions,
+        // debug: true,
+        // conditions: conditions,
         jsParams: {
           authSig: authSig,
-          chain: "mumbai",
+          chain: chain,
           publicKey: pkpPubKey,
-          sigName: "hello",
-          toSign: [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100],
+          pkpPublicKey: ethers.utils.computeAddress(pkpPubKey),
+          sigName: "ERC20Swap",
+          conditions,
         },
       });
       return response;
@@ -180,26 +258,26 @@ export class YachtLitSdk {
     chainId,
     nonce = 0,
     highGas = false,
-  }: LitERC20SwapParams): LitErc20SwapTx {
-    return {
+  }: LitERC20SwapParams) {
+    const tx = {
       to: tokenAddress,
       nonce: nonce,
       chainId: chainId,
-      maxFeePerGas: ethers.utils.parseUnits(
-        `${highGas ? "204" : "102"}`,
-        "gwei",
-      ),
-      maxPriorityFeePerGas: ethers.utils.parseUnits(
-        `${highGas ? "200" : "100"}`,
-        "gwei",
-      ),
-      gasLimit: 1000000,
+      maxFeePerGas: ethers.utils
+        .parseUnits(`${highGas ? "204" : "102"}`, "gwei")
+        .toString(),
+      maxPriorityFeePerGas: ethers.utils
+        .parseUnits(`${highGas ? "200" : "100"}`, "gwei")
+        .toString(),
+      gasLimit: "1000000",
+      from: "{{pkpPublicKey}}",
       data: this.generateTransferCallData(
         counterPartyAddress,
         ethers.utils.parseUnits(tokenAmount, decimals).toString(),
       ),
       type: 2,
     };
+    return tx;
   }
 
   public signTransaction(tx: LitErc20SwapTx, privateKey: string) {

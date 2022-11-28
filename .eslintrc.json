@@ -16,9 +16,10 @@
   },
   "plugins": ["@typescript-eslint"],
   "rules": {
-    "indent": ["error", 2],
+    "indent": ["error", 2, { "ignoredNodes": ["TemplateLiteral *"] }],
+    "no-useless-escape": "off",
     "linebreak-style": ["error", "unix"],
-    "quotes": ["error", "double"],
+    "quotes": ["error", "double", { "avoidEscape": false }],
     "semi": ["error", "always"],
     "@typescript-eslint/no-explicit-any": "off"
   }
