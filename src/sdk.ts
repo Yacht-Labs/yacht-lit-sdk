@@ -9,6 +9,13 @@ import { arrayify, keccak256, SigningKey } from "ethers/lib/utils";
 import { serialize } from "@ethersproject/transactions";
 import { PKPNFT } from "../typechain-types/contracts";
 
+function sleep(ms: number) {
+  console.log("....zzzzzzZZZzzzzz....");
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 export type LitERC20SwapParams = {
   tokenAddress: string;
   counterPartyAddress: string;
@@ -38,7 +45,7 @@ export type LitERC20SwapCondition = {
   method: "balanceOf";
   parameters: [string];
   returnValueTest: {
-    comparator: ">";
+    comparator: ">=";
     value: string;
   };
 };
@@ -47,7 +54,7 @@ export type LitERC20SwapConditionParams = {
   contractAddress: string;
   chain: string;
   amount: string;
-  decimals: string;
+  decimals: number;
 };
 
 export class YachtLitSdk {
@@ -102,7 +109,7 @@ export class YachtLitSdk {
         method: "balanceOf",
         parameters: ["address"],
         returnValueTest: {
-          comparator: ">",
+          comparator: ">=",
           value: ethers.BigNumber.from(params.amount)
             .mul(
               ethers.BigNumber.from(10).pow(
@@ -133,6 +140,7 @@ export class YachtLitSdk {
   }> {
     try {
       const { path: ipfsCID } = await uploadToIPFS(litActionCode);
+      await sleep(10000);
       const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
       const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
       const pkpTokenId = ethers.BigNumber.from(
@@ -289,4 +297,12 @@ export class YachtLitSdk {
     const encodedSignature = signer.signDigest(message);
     return serialize(tx, encodedSignature);
   }
+
+  generateERC20SwapLitActionCode = (
+    tx0: LitErc20SwapTx,
+    tx1: LitErc20SwapTx,
+    conditions: Array<LitERC20SwapCondition | { operator: "and" }>,
+  ) => {
+    // jsPara
+  };
 }

@@ -13,13 +13,13 @@ describe("Yacht-Lit SDK Unit Tests", () => {
         contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
         chain: "mumbai",
         amount: "10",
-        decimals: "6",
+        decimals: 6,
       };
       const conditionParamsB: LitERC20SwapConditionParams = {
         contractAddress: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
         chain: "polygon",
         amount: "10",
-        decimals: "10",
+        decimals: 10,
       };
       const expectedResult: Array<LitERC20SwapCondition | { operator: "and" }> =
         [
@@ -31,7 +31,7 @@ describe("Yacht-Lit SDK Unit Tests", () => {
             method: "balanceOf",
             parameters: ["address"],
             returnValueTest: {
-              comparator: ">",
+              comparator: ">=",
               value: ethers.BigNumber.from(conditionParamsA.amount)
                 .mul(
                   ethers.BigNumber.from(10).pow(
@@ -50,7 +50,7 @@ describe("Yacht-Lit SDK Unit Tests", () => {
             method: "balanceOf",
             parameters: ["address"],
             returnValueTest: {
-              comparator: ">",
+              comparator: ">=",
               value: ethers.BigNumber.from(conditionParamsB.amount)
                 .mul(
                   ethers.BigNumber.from(10).pow(
