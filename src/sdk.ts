@@ -1,61 +1,25 @@
-import { getBytesFromMultihash, LitAuthSig } from "./utils/lit";
+import { TransactionRequest } from "@ethersproject/providers";
+import { getBytesFromMultihash, LitAuthSig, sleep } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
 import { uploadToIPFS } from "./utils/ipfs";
-import { arrayify, keccak256, SigningKey } from "ethers/lib/utils";
+import {
+  arrayify,
+  keccak256,
+  SigningKey,
+  UnsignedTransaction,
+} from "ethers/lib/utils";
 import { serialize } from "@ethersproject/transactions";
 import { PKPNFT } from "../typechain-types/contracts";
-
-function sleep(ms: number) {
-  console.log("....zzzzzzZZZzzzzz....");
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-export type LitERC20SwapParams = {
-  tokenAddress: string;
-  counterPartyAddress: string;
-  tokenAmount: string;
-  decimals: number;
-  chainId: number;
-  nonce?: number;
-  highGas?: boolean;
-};
-
-export type LitErc20SwapTx = {
-  to: string;
-  nonce: number;
-  chainId: number;
-  maxFeePerGas: ethers.BigNumber;
-  maxPriorityFeePerGas: ethers.BigNumber;
-  gasLimit: number;
-  data: string;
-  type: number;
-};
-
-export type LitERC20SwapCondition = {
-  conditionType: "evmBasic";
-  contractAddress: string;
-  standardContractType: "ERC20";
-  chain: string; //TODO: can make ENUM
-  method: "balanceOf";
-  parameters: [string];
-  returnValueTest: {
-    comparator: ">=";
-    value: string;
-  };
-};
-
-export type LitERC20SwapConditionParams = {
-  contractAddress: string;
-  chain: string;
-  amount: string;
-  decimals: number;
-};
+import {
+  LitERC20SwapCondition,
+  LitERC20SwapConditionArray,
+  LitERC20SwapConditionParams,
+  LitERC20SwapParams,
+} from "./@types/yacht-lit-sdk";
 
 export class YachtLitSdk {
   public provider: ethers.providers.JsonRpcProvider;
@@ -97,7 +61,7 @@ export class YachtLitSdk {
 
   generateERC20SwapConditions(
     ...conditionsParams: LitERC20SwapConditionParams[]
-  ): Array<LitERC20SwapCondition | { operator: "and" }> {
+  ): LitERC20SwapConditionArray {
     function generateConditions(
       params: LitERC20SwapConditionParams,
     ): LitERC20SwapCondition {
@@ -123,11 +87,7 @@ export class YachtLitSdk {
     if (conditionsParams.length === 0) {
       throw new Error("No parameters provided to generate swap conditions");
     }
-    return conditionsParams.flatMap((condition, i) => {
-      return i === conditionsParams.length - 1
-        ? [generateConditions(condition)]
-        : [generateConditions(condition), { operator: "and" }];
-    });
+    return conditionsParams.map((condition) => generateConditions(condition));
   }
 
   async mintGrantBurnWithJs(litActionCode: string): Promise<{
@@ -214,27 +174,29 @@ export class YachtLitSdk {
   //   }
   // }
 
-  async runLitAction(
-    ipfsCID: string,
-    authSig: LitAuthSig,
-    pkpPubKey: string,
-    conditions: any,
-    chain = "mumbai",
-  ) {
+  async runLitAction({
+    authSig,
+    pkpPubKey,
+    ipfsCID,
+    code,
+  }: {
+    authSig: any;
+    pkpPubKey: string;
+    conditions: LitERC20SwapConditionArray;
+    ipfsCID?: string;
+    code?: string;
+  }) {
     try {
       await this.connect();
       const response = await this.litClient.executeJs({
         ipfsId: ipfsCID,
+        code: code,
         authSig: authSig,
         // debug: true,
-        // conditions: conditions,
         jsParams: {
           authSig: authSig,
-          chain: chain,
           publicKey: pkpPubKey,
           pkpPublicKey: ethers.utils.computeAddress(pkpPubKey),
-          sigName: "ERC20Swap",
-          conditions,
         },
       });
       return response;
@@ -266,7 +228,7 @@ export class YachtLitSdk {
     chainId,
     nonce = 0,
     highGas = false,
-  }: LitERC20SwapParams) {
+  }: LitERC20SwapParams): UnsignedTransaction {
     const tx = {
       to: tokenAddress,
       nonce: nonce,
@@ -288,8 +250,8 @@ export class YachtLitSdk {
     return tx;
   }
 
-  public signTransaction(tx: LitErc20SwapTx, privateKey: string) {
-    function getMessage(tx: LitErc20SwapTx) {
+  public signTransaction(tx: UnsignedTransaction, privateKey: string) {
+    function getMessage(tx: UnsignedTransaction) {
       return keccak256(arrayify(serialize(tx)));
     }
     const message = arrayify(getMessage(tx));
@@ -299,10 +261,65 @@ export class YachtLitSdk {
   }
 
   generateERC20SwapLitActionCode = (
-    tx0: LitErc20SwapTx,
-    tx1: LitErc20SwapTx,
-    conditions: Array<LitERC20SwapCondition | { operator: "and" }>,
+    tx0: UnsignedTransaction,
+    tx1: UnsignedTransaction,
+    conditions: LitERC20SwapConditionArray,
   ) => {
-    // jsPara
+    const currentTime = Date.now();
+    return `
+    const go = async () => {
+  
+      const conditions = ${JSON.stringify(conditions)};
+      const tx0 = ${JSON.stringify(tx0)};
+      const tx1 = ${JSON.stringify(tx1)};
+
+      const currentTime = ${currentTime};
+  
+      conditions.forEach((condition) => {
+          condition.parameters = [pkpPublicKey]
+      });
+  
+      tx0.from = pkpPublicKey;
+      tx1.from = pkpPublicKey;
+
+
+
+      // if 3 days have passed
+      // {swap the .to conditions in the transactions
+      //    sign the transactions
+      //    return signed transaction
+      //  }
+      // 
+  
+      const testResult = await Lit.Actions.checkConditions({
+        conditions,
+        authSig,
+        chain,
+      })
+  
+      if (!testResult) {
+        return;
+      }
+  
+      const tx0Hash = ethers.utils.arrayify(
+        ethers.utils.keccak256(
+          ethers.utils.arrayify(ethers.utils.serializeTransaction(tx0)),
+        ),
+      );
+  
+      const tx1Hash = ethers.utils.arrayify(
+        ethers.utils.keccak256(
+          ethers.utils.arrayify(ethers.utils.serializeTransaction(tx1)),
+        ),
+      );
+  
+      const sigShare = await LitActions.signEcdsa({ toSign: tx0Hash, publicKey, sigName: "tx0Signature" });
+      const sigShare2 = await LitActions.signEcdsa({ toSign: tx1Hash, publicKey, sigName: "tx1Signature" });
+  
+      LitActions.setResponse({response: JSON.stringify({tx0, tx1})});
+    };
+      
+    go();
+    `;
   };
 }

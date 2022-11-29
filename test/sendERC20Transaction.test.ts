@@ -1,7 +1,9 @@
+import { TransactionRequest } from "@ethersproject/providers";
 import { YachtLitSdk } from "./../src/sdk";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Deferrable } from "ethers/lib/utils";
 
 describe("Yacht-Lit SDK Hardhat Tests", () => {
   describe("ERC20Transfer", () => {
@@ -34,7 +36,7 @@ describe("Yacht-Lit SDK Hardhat Tests", () => {
         decimals: 18,
         chainId: 31337,
         nonce: await owner.getTransactionCount(),
-      });
+      }) as Deferrable<TransactionRequest>;
       await owner.sendTransaction(unsignedTransaction);
       const counterPartyBalance = await deployedYachtToken.balanceOf(
         addrs[0].address,
