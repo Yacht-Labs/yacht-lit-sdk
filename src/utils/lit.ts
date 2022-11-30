@@ -38,7 +38,6 @@ export async function generateAuthSig(
 
 export function getBytesFromMultihash(multihash: string): string {
   const decoded = bs58.decode(multihash);
-
   return `0x${Buffer.from(decoded).toString("hex")}`;
 }
 

@@ -1,3 +1,4 @@
+import { LitAuthSig } from "./../utils/lit";
 import { ethers } from "ethers";
 
 export type LitSignature = {
@@ -32,13 +33,21 @@ export type LitERC20SwapCondition = {
   };
 };
 
-export type LitERC20SwapConditionArray = Array<
-  LitERC20SwapCondition | { operator: "and" }
->;
-
 export type LitERC20SwapConditionParams = {
   contractAddress: string;
   chain: string;
   amount: string;
   decimals: number;
+};
+
+export type LitActionsSDK = {
+  checkConditions: ({
+    conditions,
+    authSig,
+    chain,
+  }: {
+    conditions: LitERC20SwapCondition[];
+    authSig: LitAuthSig;
+    chain: string;
+  }) => boolean;
 };

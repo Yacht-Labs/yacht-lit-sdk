@@ -16,7 +16,6 @@ import { serialize } from "@ethersproject/transactions";
 import { PKPNFT } from "../typechain-types/contracts";
 import {
   LitERC20SwapCondition,
-  LitERC20SwapConditionArray,
   LitERC20SwapConditionParams,
   LitERC20SwapParams,
 } from "./@types/yacht-lit-sdk";
@@ -60,34 +59,62 @@ export class YachtLitSdk {
   }
 
   generateERC20SwapConditions(
-    ...conditionsParams: LitERC20SwapConditionParams[]
-  ): LitERC20SwapConditionArray {
-    function generateConditions(
-      params: LitERC20SwapConditionParams,
-    ): LitERC20SwapCondition {
-      return {
-        conditionType: "evmBasic",
-        contractAddress: params.contractAddress,
-        standardContractType: "ERC20",
-        chain: params.chain,
-        method: "balanceOf",
-        parameters: ["address"],
-        returnValueTest: {
-          comparator: ">=",
-          value: ethers.BigNumber.from(params.amount)
-            .mul(
-              ethers.BigNumber.from(10).pow(
-                ethers.BigNumber.from(params.decimals),
-              ),
-            )
-            .toString(),
-        },
-      };
+    conditionsParams: [
+      LitERC20SwapConditionParams,
+      LitERC20SwapConditionParams,
+    ],
+  ): LitERC20SwapCondition[] {
+    if (conditionsParams[0].chain === conditionsParams[1].chain) {
+      throw new Error("Swap must be cross chain");
     }
-    if (conditionsParams.length === 0) {
-      throw new Error("No parameters provided to generate swap conditions");
-    }
-    return conditionsParams.map((condition) => generateConditions(condition));
+    return conditionsParams.map((condition) => ({
+      conditionType: "evmBasic",
+      contractAddress: condition.contractAddress,
+      standardContractType: "ERC20",
+      chain: condition.chain,
+      method: "balanceOf",
+      parameters: ["address"],
+      returnValueTest: {
+        comparator: ">=",
+        value: ethers.BigNumber.from(condition.amount)
+          .mul(
+            ethers.BigNumber.from(10).pow(
+              ethers.BigNumber.from(condition.decimals),
+            ),
+          )
+          .toString(),
+      },
+    }));
+  }
+
+  generateUnsignedERC20Transaction({
+    tokenAddress,
+    counterPartyAddress,
+    tokenAmount,
+    decimals,
+    chainId,
+    nonce = 0,
+    highGas = false,
+  }: LitERC20SwapParams): UnsignedTransaction {
+    const tx = {
+      to: tokenAddress,
+      nonce: nonce,
+      chainId: chainId,
+      maxFeePerGas: ethers.utils
+        .parseUnits(`${highGas ? "204" : "102"}`, "gwei")
+        .toString(),
+      maxPriorityFeePerGas: ethers.utils
+        .parseUnits(`${highGas ? "200" : "100"}`, "gwei")
+        .toString(),
+      gasLimit: "1000000",
+      from: "{{pkpPublicKey}}",
+      data: this.generateTransferCallData(
+        counterPartyAddress,
+        ethers.utils.parseUnits(tokenAmount, decimals).toString(),
+      ),
+      type: 2,
+    };
+    return tx;
   }
 
   async mintGrantBurnWithJs(litActionCode: string): Promise<{
@@ -182,7 +209,7 @@ export class YachtLitSdk {
   }: {
     authSig: any;
     pkpPubKey: string;
-    conditions: LitERC20SwapConditionArray;
+    conditions: [LitERC20SwapCondition, LitERC20SwapCondition];
     ipfsCID?: string;
     code?: string;
   }) {
@@ -220,36 +247,6 @@ export class YachtLitSdk {
     ]);
   }
 
-  generateUnsignedERC20Transaction({
-    tokenAddress,
-    counterPartyAddress,
-    tokenAmount,
-    decimals,
-    chainId,
-    nonce = 0,
-    highGas = false,
-  }: LitERC20SwapParams): UnsignedTransaction {
-    const tx = {
-      to: tokenAddress,
-      nonce: nonce,
-      chainId: chainId,
-      maxFeePerGas: ethers.utils
-        .parseUnits(`${highGas ? "204" : "102"}`, "gwei")
-        .toString(),
-      maxPriorityFeePerGas: ethers.utils
-        .parseUnits(`${highGas ? "200" : "100"}`, "gwei")
-        .toString(),
-      gasLimit: "1000000",
-      from: "{{pkpPublicKey}}",
-      data: this.generateTransferCallData(
-        counterPartyAddress,
-        ethers.utils.parseUnits(tokenAmount, decimals).toString(),
-      ),
-      type: 2,
-    };
-    return tx;
-  }
-
   public signTransaction(tx: UnsignedTransaction, privateKey: string) {
     function getMessage(tx: UnsignedTransaction) {
       return keccak256(arrayify(serialize(tx)));
@@ -263,7 +260,7 @@ export class YachtLitSdk {
   generateERC20SwapLitActionCode = (
     tx0: UnsignedTransaction,
     tx1: UnsignedTransaction,
-    conditions: LitERC20SwapConditionArray,
+    conditions: [LitERC20SwapCondition, LitERC20SwapCondition],
   ) => {
     const currentTime = Date.now();
     return `
@@ -323,3 +320,38 @@ export class YachtLitSdk {
     `;
   };
 }
+
+// Condition A(chainA PKP has tokens), TxA(Send to Bob's wallet on chain A)
+// Condition B(ChainB PKP has tokens), TxB(Send to Alice's wallet on chainB)
+
+// hasThreeDaysPassed = checkHasThreeDaysPassed(originTime)
+
+// pkpHasTokensOnChainA = checkCondition(conditionA) <= Alice has sent tokens to PKP on chain A
+// pkpHasTokensOnChainB = checkCondition(conditionB) <= Bob has sent tokens to PKP on chain B
+// Alice wants Bob's token on chain B and Bob wants Alice's token on chain A
+
+// if pkpHasTOkensOnChainA && pkpHasTokensOnChainB
+// Generate two transfer transactions and sign them and return them
+// return
+
+// if pkpHasTokensOnChainA
+// getpkpNonce(conditionB.chain);
+// if chainBPkpNonce = 1;
+// generate two transfer transactions
+// return
+// if threeDaysHasPassed
+// generate transferTransaction(txA.to = txB.to) //Instead of sending to Bob, send back to Alice
+// return
+// else return "swap conditions not met"
+
+// if pkpHasTokensOnChainB
+// get pkpNonce(conditionA.chain);
+// if chainAPkpNonce = 1;
+// generate two transfer transactions;
+// return
+// if threeDaysHasPassed
+// generate transferTransaction(txA.to = txB.to); // instead of sending to Alice, send back to Bob
+// return
+// else return "swap conditions not met"
+
+// TODO parse the types in the response to figure out what actually happened on the lit node and then response accordingly
