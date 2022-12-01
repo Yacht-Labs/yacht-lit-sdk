@@ -1,118 +1,112 @@
-import { LitERC20SwapConditionArray } from "./../src/@types/yacht-lit-sdk";
-import { YachtLitSdk } from "../src";
+import { LitActionsSDK } from './../src/@types/yacht-lit-sdk';
+import { LitAuthSig, YachtLitSdk } from "../src";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { ethers } from "ethers";
-import { LitERC20SwapConditionParams } from "../src/@types/yacht-lit-sdk";
+import { ethers, UnsignedTransaction } from "ethers";
+import {
+  LitActionsSDK,
+  LitERC20SwapCondition,
+} from "../src/@types/yacht-lit-sdk";
+import { testGenerateLitActionCode } from "./testGenerateLitActionCode";
 describe("Yacht-Lit SDK Unit Tests", () => {
   describe("ERC20Transfer", () => {
-    it("Should generate swap conditions properly", () => {
-      // const erc20ContractB = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984";
-      const conditionParamsA: LitERC20SwapConditionParams = {
-        contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
-        chain: "mumbai",
-        amount: "10",
-        decimals: 6,
-      };
-      const conditionParamsB: LitERC20SwapConditionParams = {
-        contractAddress: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
-        chain: "polygon",
-        amount: "10",
-        decimals: 10,
-      };
-      const expectedResult: LitERC20SwapConditionArray = [
-        {
-          conditionType: "evmBasic",
-          contractAddress: conditionParamsA.contractAddress,
-          standardContractType: "ERC20",
-          chain: conditionParamsA.chain,
-          method: "balanceOf",
-          parameters: ["address"],
-          returnValueTest: {
-            comparator: ">=",
-            value: ethers.BigNumber.from(conditionParamsA.amount)
-              .mul(
-                ethers.BigNumber.from(10).pow(
-                  ethers.BigNumber.from(conditionParamsA.decimals),
-                ),
-              )
-              .toString(),
-          },
-        },
-        {
-          conditionType: "evmBasic",
-          contractAddress: conditionParamsB.contractAddress,
-          standardContractType: "ERC20",
-          chain: conditionParamsB.chain,
-          method: "balanceOf",
-          parameters: ["address"],
-          returnValueTest: {
-            comparator: ">=",
-            value: ethers.BigNumber.from(conditionParamsB.amount)
-              .mul(
-                ethers.BigNumber.from(10).pow(
-                  ethers.BigNumber.from(conditionParamsB.decimals),
-                ),
-              )
-              .toString(),
-          },
-        },
-      ];
-      const sdk = new YachtLitSdk(
-        new JsonRpcProvider("url"),
-        ethers.Wallet.createRandom(),
-      );
-      expect(
-        sdk.generateERC20SwapConditions(conditionParamsA, conditionParamsB),
-      ).toEqual(expectedResult);
-    });
+    describe("Lit Action Code Tests", async () => {
+      it("Should sign two transactions when both conditions are met", async () => {
+        const CHAIN_A = "ethereum";
+        const CHAIN_A_ID = 1;
+        const CHAIN_B_ID = 137;
+        const CHAIN_B = "polygon";
+        const CHAIN_A_COUNTERPARTY =
+          "0x90B8F7A3004080a8dadC9Ab935250714a3A27aaE";
+        const CHAIN_B_COUNTERPARTY =
+          "0x0003657aBb17eDe8C28BB40C81D20a6df35C9Cb3";
+        const CHAIN_A_CONTRACT_ADDRESS = "ChainAContractAddress";
+        const CHAIN_B_CONTRACT_ADDRESS = "ChainBContractAddress";
+        const PKP_PUBLIC_ADDRESS = "0x630A5FA5eA0B94daAe707fE105404749D52909B9";
+        const VALUE_TO_SWAP = "100";
+        const DECIMALS = 18;
 
-    it("Should sign two transactions when both conditions are met", async () => {
-      const conditionParamsA: LitERC20SwapConditionParams = {
-        contractAddress: "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc",
-        chain: "goerli",
-        amount: "10",
-        decimals: 18,
-      };
-      const conditionParamsB: LitERC20SwapConditionParams = {
-        contractAddress: "0xe6b8a5CF854791412c1f6EFC7CAf629f5Df1c747",
-        chain: "mumbai",
-        amount: "10",
-        decimals: 6,
-      };
-      const sdk = new YachtLitSdk(
-        new JsonRpcProvider("url"),
-        ethers.Wallet.createRandom(),
-      );
-      // pk: f3df8b10ac9be101d40ff4656b6d446f5dc400ed3b2545f3871fea8cff94d791
-      // adr: 0xe811b31f7f6054DBda8C15b1426d84bE6f2DD403
-      // pkp pubKey: 0x04bae7b4f9dc95542bb8b70385a9808070aa1786c6cd3efb25094df52bf147de6810675c13f618212960ff0e8056407f16a6328e576cad88a416e5387c89d6f179
-      // pkp eth address:  0x4d34b9829e0FA745d7AC4Da1F8C0577caefc6F70
-      // tokenid: 21329423771703297872260561536219810650925924038293952807832327725446726064485
-      const conditions = sdk.generateERC20SwapConditions(
-        conditionParamsA,
-        conditionParamsB,
-      );
-      const tx0 = sdk.generateUnsignedERC20Transaction({
-        tokenAddress: "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc",
-        counterPartyAddress: await ethers.Wallet.createRandom().getAddress(),
-        tokenAmount: "10",
-        decimals: 18,
-        chainId: 420,
-        nonce: 0,
+        const chainACondition: LitERC20SwapCondition = {
+          conditionType: "evmBasic",
+          contractAddress: CHAIN_A_CONTRACT_ADDRESS,
+          standardContractType: "ERC20",
+          chain: CHAIN_A, //TODO: can make ENUM
+          method: "balanceOf",
+          parameters: ["pkpPublicAddress"],
+          returnValueTest: {
+            comparator: ">=",
+            value: VALUE_TO_SWAP,
+          },
+        };
+        const chainBCondition: LitERC20SwapCondition = {
+          conditionType: "evmBasic",
+          contractAddress: CHAIN_B_CONTRACT_ADDRESS,
+          standardContractType: "ERC20",
+          chain: CHAIN_B, //TODO: can make ENUM
+          method: "balanceOf",
+          parameters: ["pkpPublicAddress"],
+          returnValueTest: {
+            comparator: ">=",
+            value: VALUE_TO_SWAP,
+          },
+        };
+        const chainATransaction = {
+          to: CHAIN_B_COUNTERPARTY,
+          nonce: 0,
+          chainId: CHAIN_A_ID,
+          maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
+          maxPriorityFeePerGas: ethers.utils
+            .parseUnits("100", "gwei")
+            .toString(),
+          gasLimit: "1000000",
+          from: "{{pkpPublicKey}}",
+          data: "100",
+          type: 2,
+        };
+        const chainBTransaction = {
+          to: CHAIN_B_COUNTERPARTY,
+          nonce: 0,
+          chainId: CHAIN_B_ID,
+          maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
+          maxPriorityFeePerGas: ethers.utils
+            .parseUnits("100", "gwei")
+            .toString(),
+          gasLimit: "1000000",
+          from: "{{pkpPublicKey}}",
+          data: "100",
+          type: 2,
+        };
+        const authSig: LitAuthSig = {
+          sig: "signature",
+          derivedVia: "derived",
+          signedMessage: "signedMessage",
+          address: "myAddress",
+        };
+        const jsParams = {
+          pkpUncompressedPublicKey:
+            "0x04cd9f4bec7e658a023f2b89d4062ed36529fae19ff9f07940c02532eeb4b972726a5a08f20dac526c3ee92778c035813bd2aaec34861e2b94a8588ea2856c775d",
+          pkpCompressedPublicKey: "0x763686076117Fc30B9a81e329D6f85ba4A94AC54",
+        };
+        const litActionsSdkMock: LitActionsSDK = {
+          checkConditions: jest.fn(),
+          signEcdsa: jest.fn(),
+          getLatestNonce: jest.fn(),
+          setResponse: jest.fn(),
+        };
+        litActionsSdkMock.checkConditions.
+        const originTime = Date.now();
+        await testGenerateLitActionCode(
+          chainACondition,
+          chainBCondition,
+          chainATransaction,
+          chainBTransaction,
+          litActionsSdkMock,
+          authSig,
+          jsParams,
+          originTime,
+        );
+        expect()
       });
-      const tx1 = sdk.generateUnsignedERC20Transaction({
-        tokenAddress: "0xe6b8a5CF854791412c1f6EFC7CAf629f5Df1c747",
-        counterPartyAddress: await ethers.Wallet.createRandom().getAddress(),
-        tokenAmount: "10",
-        decimals: 6,
-        chainId: 80001,
-        nonce: 0,
-      });
-      const litActionCode = sdk.generateERC20SwapLitActionCode(
-        tx0,
-        tx1,
-        conditions,
-      );
     });
+    it("Should sign two transactions when both conditions are met", async () => {});
   });
 });

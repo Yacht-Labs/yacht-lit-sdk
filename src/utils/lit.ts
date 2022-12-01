@@ -48,7 +48,7 @@ export function sleep(ms: number) {
   });
 }
 
-export function hasThreeDaysPassed(previousTime: number) {
+export function checkHasThreeDaysPassed(previousTime: number) {
   const currentTime = Date.now();
   const difference = currentTime - previousTime;
   return difference / (1000 * 3600 * 24) >= 3 ? true : false;
