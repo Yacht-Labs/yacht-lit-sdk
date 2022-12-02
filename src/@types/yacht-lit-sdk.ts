@@ -81,6 +81,7 @@ export const LitChainIds: { [key: string]: number } = {
   xdc: 50,
   evmos: 9001,
   evmosTestnet: 9000,
+  hardhat: 31337,
 };
 
 export enum CHAIN_NAME {
@@ -107,6 +108,7 @@ export enum CHAIN_NAME {
   "xdc",
   "evmos",
   "evmosTestnet",
+  "hardhat",
 }
 
 export type LitUnsignedTransaction = UnsignedTransaction & { from: string };

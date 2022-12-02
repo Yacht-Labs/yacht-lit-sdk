@@ -15,13 +15,13 @@ describe("Lit Action Code Tests", () => {
     new ethers.providers.JsonRpcProvider(
       "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
     ),
+    "serrano",
     new ethers.Wallet(
       "0ef7ff778c8c7d9320d9d9475b8e4f1699ec7185b7f6f56d1c0a11a766e4b01b",
       new ethers.providers.JsonRpcProvider(
         "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
       ),
     ),
-    "serrano",
   );
   const chainAParams = {
     counterPartyAddress: counterPartyAAddress,
@@ -92,9 +92,9 @@ describe("Lit Action Code Tests", () => {
       amount: "8",
       decimals: 18,
     };
-    const NoLitActionCode = sdk.createERC20SwapLitAction(
-      sameChainAParams,
-      sameChainBParams,
-    );
+
+    expect(function () {
+      sdk.createERC20SwapLitAction(sameChainAParams, sameChainBParams);
+    }).to.throw("Swap must be cross chain, same chains not supported");
   });
 });
