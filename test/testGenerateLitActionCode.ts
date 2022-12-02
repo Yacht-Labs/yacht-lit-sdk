@@ -73,7 +73,7 @@ export async function testGenerateLitActionCode(
       await generateSwapTransactions();
       return;
     }
-    if (threeDaysHasPassed) {
+    if (!threeDaysHasPassed) {
       LitActions.setResponse({ response: "Conditions for swap not met!" });
       return;
     }
@@ -91,6 +91,7 @@ export async function testGenerateLitActionCode(
         chainATransaction: chainAClawbackTransaction,
       }),
     });
+    return;
   }
 
   if (chainBConditionsPass) {
@@ -98,7 +99,7 @@ export async function testGenerateLitActionCode(
       await generateSwapTransactions();
       return;
     }
-    if (threeDaysHasPassed) {
+    if (!threeDaysHasPassed) {
       LitActions.setResponse({ response: "Conditions for swap not met!" });
       return;
     }
@@ -116,5 +117,8 @@ export async function testGenerateLitActionCode(
         chainATransaction: chainBClawbackTransaction,
       }),
     });
+    return;
   }
+  LitActions.setResponse({ response: "Conditions for swap not met!" });
+  return;
 }

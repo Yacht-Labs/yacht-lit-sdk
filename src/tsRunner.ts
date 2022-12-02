@@ -1,3 +1,4 @@
+import { CHAIN_NAME } from "./@types/yacht-lit-sdk";
 import { ethers } from "ethers";
 import { YachtLitSdk } from "./sdk";
 
@@ -20,55 +21,57 @@ const sdk = new YachtLitSdk(
 // conditions: array
 
 const main = async () => {
-  const nonce = await new ethers.providers.JsonRpcProvider(
+  const chainAParams = {
+    counterPartyAddress: "0x630A5FA5eA0B94daAe707fE105404749D52909B9",
+    tokenAddress: "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc",
+    chain: "goerli",
+    amount: "5",
+    decimals: 18,
+  };
+  const chainBParams = {
+    counterPartyAddress: "0x96242814208590C563AAFB6270d6875A12C5BC45",
+    tokenAddress: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16", // TEST TOKEN
+    chain: "mumbai",
+    amount: "8",
+    decimals: 18,
+  };
+  const LitActionCode = sdk.createERC20SwapLitAction(
+    chainAParams,
+    chainBParams,
+  );
+  // console.log({ LitActionCode });
+  //const pkpInfo = await sdk.mintGrantBurnWithJs(LitActionCode);
+  //console.log({ pkpInfo });
+
+  const authSig = await sdk.generateAuthSig();
+  const response = await sdk.runLitAction({
+    authSig,
+    pkpPubKey:
+      "0x04180e158a21c93d3462c06320094779172a7ffcd3141e105a83c15e289e46daf3aae40ee12b50039108d460254cdb57b149be2f5ddc772f244b94d1015a2aa347",
+    code: LitActionCode,
+    // ipfsCID: "QmSCxGRRznNDJRDri9qd3batstNiSj9xDHRTVhj8j2TKfo",
+  });
+  const mumbaiProvider = new ethers.providers.JsonRpcProvider(
     "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
-  ).getTransactionCount("0x630A5FA5eA0B94daAe707fE105404749D52909B9");
-  console.log({ nonce });
-  // const conditions = sdk.generateERC20SwapConditions({
-  //   contractAddress: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
-  //   chain: "mumbai",
-  //   amount: "0",
-  //   decimals: 18,
-  // });
+  );
+  const goerliProvider = new ethers.providers.JsonRpcProvider(
+    "https://eth-goerli.g.alchemy.com/v2/RZYixkcKT7io37tj7KCobPlyVB1IOciO",
+  );
+  const chainASignature = response.signatures.chainASignature.signature;
+  const chainATx = response.response.chainATransaction;
+  const goerliTx = await goerliProvider.sendTransaction(
+    ethers.utils.serializeTransaction(chainATx, chainASignature),
+  );
+  console.log(await goerliTx.wait());
 
-  // const tx0 = sdk.generateUnsignedERC20Transaction({
-  //   tokenAddress: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
-  //   counterPartyAddress: "0x630A5FA5eA0B94daAe707fE105404749D52909B9",
-  //   tokenAmount: "100",
-  //   decimals: 18,
-  //   chainId: 80001,
-  // });
-
-  // const tx1 = sdk.generateUnsignedERC20Transaction({
-  //   tokenAddress: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
-  //   counterPartyAddress: "0x630A5FA5eA0B94daAe707fE105404749D52909B9",
-  //   tokenAmount: "100",
-  //   decimals: 18,
-  //   chainId: 80001,
-  // });
-
-  // const litActionCode = sdk.generateERC20SwapLitActionCode(
-  //   tx0,
-  //   tx1,
-  //   conditions,
-  // );
-  // console.log({ litActionCode });
-  // const pkpInfo = await sdk.mintGrantBurnWithJs(litActionCode);
-  // // console.log({ pkpInfo });
-
-  // const authSig = await sdk.generateAuthSig();
-  // // console.log({ authSig });
-  // const res = await sdk.runLitAction(
-  //   pkpInfo.ipfsCID,
-  //   authSig,
-  //   pkpInfo.pkp.publicKey,
-  //   conditions,
-  // );
-  // console.dir({ res });
-  // console.log("sig0: ", res.signatures.tx0Signature);
-  // console.log("sig1: ", res.signatures.tx1Signature);
-  // console.log("tx0res: ", res.response.tx0);
-  // console.log("tx1res: ", res.response.tx1);
+  const chainBSignature = response.signatures.chainBSignature.signature;
+  const chainBTx = response.response.chainBTransaction;
+  const tx = await mumbaiProvider.sendTransaction(
+    ethers.utils.serializeTransaction(chainBTx, chainBSignature),
+  );
+  console.log(await tx.wait());
 };
-
+// 0xa6d77fC34c9003Af4d0F6226ca93D734f702D285 -HANKS
+// 0x0B83A2A6178ba5474C514f325b15f9aC91B1F84C  -STRAUS
+// 0x8280667b123aaeF271b05685E8105477c180920D - NEWEST
 main();

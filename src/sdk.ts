@@ -13,7 +13,12 @@ import {
 } from "ethers/lib/utils";
 import { serialize } from "@ethersproject/transactions";
 import { PKPNFT } from "../typechain-types/contracts";
-import { LitERC20SwapCondition } from "./@types/yacht-lit-sdk";
+import {
+  LitERC20SwapCondition,
+  LitChainIds,
+  CHAIN_NAME,
+  LitUnsignedTransaction,
+} from "./@types/yacht-lit-sdk";
 
 export class YachtLitSdk {
   public provider: ethers.providers.JsonRpcProvider;
@@ -68,13 +73,24 @@ export class YachtLitSdk {
       amount: string;
       decimals: number;
     },
-  ) {
+  ): string {
     const chainACondition = this.generateERC20SwapCondition(chainAParams);
     const chainBCondition = this.generateERC20SwapCondition(chainBParams);
-    const chainATransaction =
-      this.generateUnsignedERC20Transaction(chainAParams);
-    const chainBTransaction =
-      this.generateUnsignedERC20Transaction(chainBParams);
+    console.log({ chainACondition });
+    const chainATransaction = this.generateUnsignedERC20Transaction({
+      ...chainAParams,
+      counterPartyAddress: chainBParams.counterPartyAddress,
+    });
+    const chainBTransaction = this.generateUnsignedERC20Transaction({
+      ...chainBParams,
+      counterPartyAddress: chainAParams.counterPartyAddress,
+    });
+    return this.generateERC20SwapLitActionCode(
+      chainACondition,
+      chainBCondition,
+      chainATransaction,
+      chainBTransaction,
+    );
   }
 
   generateERC20SwapCondition(conditionParams: {
@@ -110,11 +126,11 @@ export class YachtLitSdk {
     chain: string;
     amount: string;
     decimals: number;
-  }) {
+  }): LitUnsignedTransaction {
     return {
-      to: transactionParams.counterPartyAddress,
+      to: transactionParams.tokenAddress,
       nonce: 0,
-      chainId: transactionParams.chain,
+      chainId: LitChainIds[transactionParams.chain],
       maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
       maxPriorityFeePerGas: ethers.utils.parseUnits("100", "gwei").toString(),
       gasLimit: "1000000",
@@ -221,10 +237,10 @@ export class YachtLitSdk {
   }: {
     authSig: any;
     pkpPubKey: string;
-    conditions: [LitERC20SwapCondition, LitERC20SwapCondition];
     ipfsCID?: string;
     code?: string;
   }) {
+    console.log(ethers.utils.computeAddress(pkpPubKey));
     try {
       await this.connect();
       const response = await this.litClient.executeJs({
@@ -233,9 +249,9 @@ export class YachtLitSdk {
         authSig: authSig,
         // debug: true,
         jsParams: {
-          authSig: authSig,
           publicKey: pkpPubKey,
           pkpPublicKey: ethers.utils.computeAddress(pkpPubKey),
+          authSig,
         },
       });
       return response;
@@ -270,52 +286,130 @@ export class YachtLitSdk {
   }
 
   generateERC20SwapLitActionCode = (
-    tx0: UnsignedTransaction,
-    tx1: UnsignedTransaction,
-    conditions: [LitERC20SwapCondition, LitERC20SwapCondition],
+    chainACondition: LitERC20SwapCondition,
+    chainBCondition: LitERC20SwapCondition,
+    chainATransaction: LitUnsignedTransaction,
+    chainBTransaction: LitUnsignedTransaction,
+    originTime?: number,
   ) => {
-    const currentTime = Date.now();
     return `
     const go = async () => {
-  
-      const conditions = ${JSON.stringify(conditions)};
-      const tx0 = ${JSON.stringify(tx0)};
-      const tx1 = ${JSON.stringify(tx1)};
-
-      const currentTime = ${currentTime};
-  
-      conditions.forEach((condition) => {
-          condition.parameters = [pkpPublicKey]
-      });
-  
-      tx0.from = pkpPublicKey;
-      tx1.from = pkpPublicKey;
-
-  
-      const testResult = await Lit.Actions.checkConditions({
-        conditions,
-        authSig,
-        chain,
-      })
-  
-      if (!testResult) {
-        return;
-      }
-  
-      const tx0Hash = 
-  
-      const tx1Hash = ethers.utils.arrayify(
-        ethers.utils.keccak256(
-          ethers.utils.arrayify(ethers.utils.serializeTransaction(tx1)),
-        ),
-      );
-  
-      const sigShare = await LitActions.signEcdsa({ toSign: tx0Hash, publicKey, sigName: "tx0Signature" });
-      const sigShare2 = await LitActions.signEcdsa({ toSign: tx1Hash, publicKey, sigName: "tx1Signature" });
-  
-      LitActions.setResponse({response: JSON.stringify({tx0, tx1})});
-    };
+        const originTime = ${JSON.stringify(originTime)} ? ${JSON.stringify(
+      originTime,
+    )} : Date.now();
+        const chainACondition = ${JSON.stringify(chainACondition)}
+        const chainBCondition = ${JSON.stringify(chainBCondition)}
+        const chainATransaction = ${JSON.stringify(chainATransaction)}
+        const chainBTransaction = ${JSON.stringify(chainBTransaction)}
+        const hashTransaction = (tx) => {
+          return ethers.utils.arrayify(
+            ethers.utils.keccak256(
+              ethers.utils.arrayify(ethers.utils.serializeTransaction(tx)),
+            ),
+          );
+        }
       
+        function checkHasThreeDaysPassed(previousTime) {
+            const currentTime = Date.now();
+            const difference = currentTime - previousTime;
+            return difference / (1000 * 3600 * 24) >= 3 ? true : false;
+        }
+        
+        const generateSwapTransactions = async () => {
+          await LitActions.signEcdsa({
+            toSign: hashTransaction(chainATransaction),
+            publicKey: publicKey,
+            sigName: "chainASignature",
+          });
+          await LitActions.signEcdsa({
+            toSign: hashTransaction(chainBTransaction),
+            publicKey: publicKey,
+            sigName: "chainBSignature",
+          });
+          Lit.Actions.setResponse({
+            response: JSON.stringify({ chainATransaction, chainBTransaction }),
+          });
+        };
+      
+        chainACondition.parameters = chainBCondition.parameters = [
+          pkpPublicKey,
+        ];
+        chainATransaction.from = chainBTransaction.from = pkpPublicKey;
+      
+        const chainAConditionsPass = await Lit.Actions.checkConditions({
+          conditions: [chainACondition],
+          authSig,
+          chain: chainACondition.chain,
+        });
+      
+        const chainBConditionsPass = await Lit.Actions.checkConditions({
+          conditions: [chainBCondition],
+          authSig,
+          chain: chainBCondition.chain,
+        });
+      
+        if (chainAConditionsPass && chainBConditionsPass) {
+          await generateSwapTransactions();
+          return;
+        }
+      
+        const threeDaysHasPassed = checkHasThreeDaysPassed(originTime);
+        const chainANonce = await Lit.Actions.getLatestNonce({address: pkpPublicKey, chain: chainACondition.chain});
+        const chainBNonce = await Lit.Actions.getLatestNonce({address: pkpPublicKey, chain: chainBCondition.chain});
+
+        if (chainAConditionsPass) {
+          if (chainBNonce === 1) {
+            await generateSwapTransactions();
+            return;
+          }
+          if (!threeDaysHasPassed) {
+            Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+            return;
+          }
+          const chainAClawbackTransaction = {
+            ...chainATransaction,
+            to: chainBTransaction.to,
+          };
+          await Lit.Actions.signEcdsa({
+            toSign: hashTransaction(chainAClawbackTransaction),
+            publicKey: pkpUncompressedPublicKey,
+            sigName: "chainASignature",
+          });
+          Lit.Actions.setResponse({
+            response: JSON.stringify({
+              chainATransaction: chainAClawbackTransaction,
+            }),
+          });
+          return;
+        }
+      
+        if (chainBConditionsPass) {
+          if (chainANonce === 1) {
+            await generateSwapTransactions();
+            return;
+          }
+          if (!threeDaysHasPassed) {
+            Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+            return;
+          }
+          const chainBClawbackTransaction = {
+            ...chainBTransaction,
+            to: chainATransaction.to,
+          };
+          await Lit.Actions.signEcdsa({
+            toSign: hashTransaction(chainBClawbackTransaction),
+            publicKey: pkpUncompressedPublicKey,
+            sigName: "chainASignature",
+          });
+          Lit.Actions.setResponse({
+            response: JSON.stringify({
+              chainATransaction: chainBClawbackTransaction,
+            }),
+          });
+          return;
+        }
+        Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+      }
     go();
     `;
   };

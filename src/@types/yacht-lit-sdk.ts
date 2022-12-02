@@ -1,3 +1,4 @@
+import { UnsignedTransaction } from "ethers";
 import { LitAuthSig } from "./../utils/lit";
 
 export type LitSignature = {
@@ -23,7 +24,7 @@ export type LitERC20SwapCondition = {
   conditionType: "evmBasic";
   contractAddress: string;
   standardContractType: "ERC20";
-  chain: string; //TODO: can make ENUM
+  chain: string;
   method: "balanceOf";
   parameters: [string];
   returnValueTest: {
@@ -65,7 +66,7 @@ export interface LitActionsSDK {
   setResponse: ({ response }: { response: string }) => void;
 }
 
-export const LitChainIds = {
+export const LitChainIds: { [key: string]: number } = {
   ethereum: 1,
   polygon: 137,
   fantom: 250,
@@ -90,3 +91,33 @@ export const LitChainIds = {
   evmos: 9001,
   evmosTestnet: 9000,
 };
+
+export enum CHAIN_NAME {
+  "ethereum",
+  "polygon",
+  "fantom",
+  "xdai",
+  "bsc",
+  "arbitrum",
+  "avalanche",
+  "fuji",
+  "harmony",
+  "kovan",
+  "mumbai",
+  "goerli",
+  "ropsten",
+  "rinkeby",
+  "cronos",
+  "optimism",
+  "celo",
+  "aurora",
+  "eluvio",
+  "alfajores",
+  "xdc",
+  "evmos",
+  "evmosTestnet",
+}
+
+// export type CHAIN_NAME = key of typeof LitChainIds;
+
+export type LitUnsignedTransaction = UnsignedTransaction & { from: string };
