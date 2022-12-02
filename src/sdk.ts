@@ -28,10 +28,11 @@ export class YachtLitSdk {
   constructor(
     provider: ethers.providers.JsonRpcProvider,
     litNetwork?: string,
+    signer?: ethers.Signer,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
   ) {
     this.provider = provider;
-    this.signer = ethers.Wallet.createRandom();
+    this.signer = signer ? signer : ethers.Wallet.createRandom();
     this.litClient = litNetwork
       ? new LitJsSdk.LitNodeClient({ litNetwork, debug: false })
       : new LitJsSdk.LitNodeClient({ debug: false });
