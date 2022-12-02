@@ -1,4 +1,3 @@
-import { CHAIN_NAME } from "./@types/yacht-lit-sdk";
 import { ethers } from "ethers";
 import { YachtLitSdk } from "./sdk";
 
@@ -6,12 +5,12 @@ const sdk = new YachtLitSdk(
   new ethers.providers.JsonRpcProvider(
     "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
   ),
-  new ethers.Wallet(
-    "b6d84955bc272c590344b528e4cebc73a72b0fc250b176680ff39807ee272f2b",
-    new ethers.providers.JsonRpcProvider(
-      "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
-    ),
-  ),
+  // new ethers.Wallet(
+  //   "b6d84955bc272c590344b528e4cebc73a72b0fc250b176680ff39807ee272f2b",
+  //   new ethers.providers.JsonRpcProvider(
+  //     "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
+  //   ),
+  // ),
   "serrano",
 );
 
