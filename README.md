@@ -30,21 +30,14 @@ Generate ERC20 Swap Transaction:
 import { ethers } from "ethers";
 
 const provider = new ethers.providers.JsonRpcProvider(
-  "{JSON_RPC_PROVIDER_URL_HERE}"
+  "{JSON_RPC_PROVIDER_URL_HERE}" // this is the network which will mint PKPs.  As of 12/01/2022 this is Mumbai
 );
 
-const PRIVATE_KEY = "{YOUR_PRIVATE_KEY_HERE}"
-const wallet = new ethers.Wallet(PRIVATE_KEY);
-
-const yacht = new YachtLitSdk(provider, wallet);
-
-const result = yacht.generateUnsignedERC20Transaction({
-  tokenAddress: "{ERC_20_CONTRACT_ADDRESS}",
-  counterPartyAddress: "{COUNTER_PARTY_ADDRESS}",
-  tokenAmount: "{TOKEN_AMOUNT_HUMAN_READABLE}",
-  decimals: "{TOKEN_DECIMALS}",
-  chainId: "{CHAIN_ID}",
-});
-
-console.log(result);
+const yacht = new YachtLitSdk(provider);
 ```
+
+This SDK is used to generate a Lit Action that will facilitate cross chain atomic swaps of ERC20 tokens. Rather than having a central pool of liquidity used to swap assets cross chain, you can instead find a counterparty for a one-time trade. This removes the risk of vulnerable honeypot liquidity pools.
+
+A Lit Action is attached to a Programmable Key Pair(PKP) and has a public and private key with which it can receive tokens and sign transactions. In this case, you will create a Lit Action with an associated PKP, send the required ERC20 tokens to the PKP address, and once both parties have fulfilled the swap conditions the Lit Action will return two transactions which swap the tokens across chains.
+
+To generate an atomic cross-chain swap using Lit Actions, you'll first need to generate the Lit Action code to check the swap conditions.

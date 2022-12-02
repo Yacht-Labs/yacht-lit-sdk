@@ -10,16 +10,6 @@ export type LitSignature = {
   dataSigned: string;
 };
 
-export type LitERC20SwapParams = {
-  tokenAddress: string;
-  counterPartyAddress: string;
-  tokenAmount: string;
-  decimals: number;
-  chainId: number;
-  nonce?: number;
-  highGas?: boolean;
-};
-
 export type LitERC20SwapCondition = {
   conditionType: "evmBasic";
   contractAddress: string;
@@ -33,8 +23,9 @@ export type LitERC20SwapCondition = {
   };
 };
 
-export type LitERC20SwapConditionParams = {
-  contractAddress: string;
+export type LitERC20SwapParams = {
+  counterPartyAddress: string;
+  tokenAddress: string;
   chain: string;
   amount: string;
   decimals: number;
@@ -117,7 +108,5 @@ export enum CHAIN_NAME {
   "evmos",
   "evmosTestnet",
 }
-
-// export type CHAIN_NAME = key of typeof LitChainIds;
 
 export type LitUnsignedTransaction = UnsignedTransaction & { from: string };

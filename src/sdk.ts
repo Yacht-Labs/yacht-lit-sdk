@@ -1,4 +1,4 @@
-import { getBytesFromMultihash, LitAuthSig, sleep } from "./utils/lit";
+import { getBytesFromMultihash, sleep } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
@@ -16,23 +16,22 @@ import { PKPNFT } from "../typechain-types/contracts";
 import {
   LitERC20SwapCondition,
   LitChainIds,
-  CHAIN_NAME,
   LitUnsignedTransaction,
+  LitERC20SwapParams,
 } from "./@types/yacht-lit-sdk";
 
 export class YachtLitSdk {
-  public provider: ethers.providers.JsonRpcProvider;
-  public pkpContract: PKPNFT;
+  private provider: ethers.providers.JsonRpcProvider;
+  private pkpContract: PKPNFT;
   private signer: ethers.Signer;
-  public litClient: any;
+  private litClient: any;
   constructor(
     provider: ethers.providers.JsonRpcProvider,
-    signer: ethers.Signer,
     litNetwork?: string,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
   ) {
     this.provider = provider;
-    this.signer = signer;
+    this.signer = ethers.Wallet.createRandom();
     this.litClient = litNetwork
       ? new LitJsSdk.LitNodeClient({ litNetwork, debug: false })
       : new LitJsSdk.LitNodeClient({ debug: false });
@@ -43,7 +42,7 @@ export class YachtLitSdk {
     ) as PKPNFT;
   }
 
-  async connect() {
+  private async connect() {
     try {
       await this.litClient.connect();
     } catch (err) {
@@ -51,7 +50,7 @@ export class YachtLitSdk {
     }
   }
 
-  async mintPKP() {
+  private async mintPKP() {
     if (!this.signer.provider) {
       throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
     }
@@ -59,24 +58,21 @@ export class YachtLitSdk {
   }
 
   createERC20SwapLitAction(
-    chainAParams: {
-      counterPartyAddress: string;
-      tokenAddress: string;
-      chain: string;
-      amount: string;
-      decimals: number;
-    },
-    chainBParams: {
-      counterPartyAddress: string;
-      tokenAddress: string;
-      chain: string;
-      amount: string;
-      decimals: number;
-    },
+    chainAParams: LitERC20SwapParams,
+    chainBParams: LitERC20SwapParams,
   ): string {
+    const chainAIsValid = Object.keys(LitChainIds).includes(chainAParams.chain);
+    const chainBIsValid = Object.keys(LitChainIds).includes(chainAParams.chain);
+    if (!chainAIsValid || !chainBIsValid) {
+      throw new Error(
+        `Invalid chain name. Valid chains: ${Object.keys(LitChainIds)}`,
+      );
+    }
+    if (chainAParams.chain === chainBParams.chain) {
+      throw new Error("Swap must be cross chain, same chains not supported");
+    }
     const chainACondition = this.generateERC20SwapCondition(chainAParams);
     const chainBCondition = this.generateERC20SwapCondition(chainBParams);
-    console.log({ chainACondition });
     const chainATransaction = this.generateUnsignedERC20Transaction({
       ...chainAParams,
       counterPartyAddress: chainBParams.counterPartyAddress,
@@ -93,7 +89,7 @@ export class YachtLitSdk {
     );
   }
 
-  generateERC20SwapCondition(conditionParams: {
+  private generateERC20SwapCondition(conditionParams: {
     counterPartyAddress: string;
     tokenAddress: string;
     chain: string;
@@ -149,7 +145,7 @@ export class YachtLitSdk {
     };
   }
 
-  async mintGrantBurnWithJs(litActionCode: string): Promise<{
+  private async mintGrantBurnWithJs(litActionCode: string): Promise<{
     ipfsCID: string;
     pkp: {
       tokenId: string;
@@ -179,7 +175,7 @@ export class YachtLitSdk {
     }
   }
 
-  async mintGrantBurn(ipfsCID: string) {
+  private async mintGrantBurn(ipfsCID: string) {
     if (!this.signer.provider) {
       throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
     }
@@ -201,7 +197,7 @@ export class YachtLitSdk {
     }
   }
 
-  async getPubKeyByPKPTokenId(tokenId: string): Promise<string> {
+  private async getPubKeyByPKPTokenId(tokenId: string): Promise<string> {
     try {
       return await this.pkpContract.getPubkey(tokenId);
     } catch (err) {
@@ -264,7 +260,7 @@ export class YachtLitSdk {
     }
   }
 
-  async uploadToIPFS(code: string) {
+  private async uploadToIPFS(code: string) {
     //TODO: Figure out how to use version 17 of ipfs-core
     return await uploadToIPFS(code);
   }
@@ -289,7 +285,7 @@ export class YachtLitSdk {
     return serialize(tx, encodedSignature);
   }
 
-  generateERC20SwapLitActionCode = (
+  private generateERC20SwapLitActionCode = (
     chainACondition: LitERC20SwapCondition,
     chainBCondition: LitERC20SwapCondition,
     chainATransaction: LitUnsignedTransaction,
