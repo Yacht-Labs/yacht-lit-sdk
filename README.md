@@ -40,4 +40,28 @@ This SDK is used to generate a Lit Action that will facilitate cross chain atomi
 
 A Lit Action is attached to a Programmable Key Pair(PKP) and has a public and private key with which it can receive tokens and sign transactions. In this case, you will create a Lit Action with an associated PKP, send the required ERC20 tokens to the PKP address, and once both parties have fulfilled the swap conditions the Lit Action will return two transactions which swap the tokens across chains.
 
-To generate an atomic cross-chain swap using Lit Actions, you'll first need to generate the Lit Action code to check the swap conditions.
+To generate an atomic cross-chain swap using Lit Actions, you'll first need to generate the Lit Action code to check the swap conditions. To do this, agree on your ERC20 swap conditions across chains. Then, using the instantiated sdk:
+
+```
+  const chainAParams = {
+    counterPartyAddress: "0x630A5FA5eA0B94daAe707fE105404749D52909B9",
+    tokenAddress: "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc",
+    chain: "goerli",
+    amount: "5",
+    decimals: 18,
+  };
+  const chainBParams = {
+    counterPartyAddress: "0x96242814208590C563AAFB6270d6875A12C5BC45",
+    tokenAddress: "0xeDb95D8037f769B72AAab41deeC92903A98C9E16",
+    chain: "mumbai",
+    amount: "8",
+    decimals: 18,
+  };
+  const litActionCode = yacht.createERC20SwapLitAction(
+    chainAParams,
+    chainBParams,
+  );
+```
+
+This will return the required litActionCode to mint the PKP. You can see our logic for generating the Lit Action code below:
+![Lit Action ERC20 Swap Logic](https://i.imgur.com/0dDSXny.png)
