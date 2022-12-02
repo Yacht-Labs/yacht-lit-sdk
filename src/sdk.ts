@@ -34,8 +34,8 @@ export class YachtLitSdk {
     this.provider = provider;
     this.signer = signer;
     this.litClient = litNetwork
-      ? new LitJsSdk.LitNodeClient({ litNetwork })
-      : new LitJsSdk.LitNodeClient();
+      ? new LitJsSdk.LitNodeClient({ litNetwork, debug: false })
+      : new LitJsSdk.LitNodeClient({ debug: false });
     this.pkpContract = new ethers.Contract(
       pkpContractAddress,
       pkpNftContract.abi,
@@ -126,15 +126,19 @@ export class YachtLitSdk {
     chain: string;
     amount: string;
     decimals: number;
+    from?: string;
+    nonce?: number;
   }): LitUnsignedTransaction {
     return {
       to: transactionParams.tokenAddress,
-      nonce: 0,
+      nonce: transactionParams.nonce ? transactionParams.nonce : 0,
       chainId: LitChainIds[transactionParams.chain],
       maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
       maxPriorityFeePerGas: ethers.utils.parseUnits("100", "gwei").toString(),
       gasLimit: "1000000",
-      from: "{{pkpPublicKey}}",
+      from: transactionParams.from
+        ? transactionParams.from
+        : "{{pkpPublicKey}}",
       data: this.generateTransferCallData(
         transactionParams.counterPartyAddress,
         ethers.utils
