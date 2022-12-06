@@ -33,7 +33,7 @@ const provider = new ethers.providers.JsonRpcProvider(
   "{JSON_RPC_PROVIDER_URL_HERE}" // this is the network which will mint PKPs.  As of 12/01/2022 this is Mumbai
 );
 
-const yacht = new YachtLitSdk(provider);
+const yacht = new YachtLitSdk(provider, "serrano");
 ```
 
 This SDK is used to generate a Lit Action that will facilitate cross chain atomic swaps of ERC20 tokens. Rather than having a central pool of liquidity used to swap assets cross chain, you can instead find a counterparty for a one-time trade. This removes the risk of vulnerable honeypot liquidity pools.
