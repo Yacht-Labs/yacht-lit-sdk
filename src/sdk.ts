@@ -146,7 +146,7 @@ export class YachtLitSdk {
     };
   }
 
-  private async mintGrantBurnWithJs(litActionCode: string): Promise<{
+  async mintGrantBurnWithJs(litActionCode: string): Promise<{
     ipfsCID: string;
     pkp: {
       tokenId: string;
@@ -214,21 +214,21 @@ export class YachtLitSdk {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
 
-  // async mintPKPandExecuteJs(litActionCode: string) {
-  //   try {
-  //     const mintTx = await this.mintPKP();
-  //     const minedMintTx = await mintTx.wait();
-  //     const pkpTokenId = ethers.BigNumber.from(
-  //       minedMintTx.logs[1].topics[3],
-  //     ).toString();
-  //     const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
-  //     const { path: ipfsCID } = await uploadToIPFS(litActionCode);
-  //     const authSig = await this.generateAuthSig();
-  //     await this.runLitAction(ipfsCID, authSig, pkpPubKey);
-  //   } catch (err) {
-  //     console.log(err);
-  //   }
-  // }
+  async mintPKPandExecuteJs(litActionCode: string) {
+    try {
+      const mintTx = await this.mintPKP();
+      const minedMintTx = await mintTx.wait();
+      const pkpTokenId = ethers.BigNumber.from(
+        minedMintTx.logs[1].topics[3],
+      ).toString();
+      const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+      const { path: ipfsCID } = await uploadToIPFS(litActionCode);
+      const authSig = await this.generateAuthSig();
+      await this.runLitAction({ ipfsCID, authSig, pkpPubKey });
+    } catch (err) {
+      console.log(err);
+    }
+  }
 
   async runLitAction({
     authSig,
@@ -248,7 +248,6 @@ export class YachtLitSdk {
         ipfsId: ipfsCID,
         code: code,
         authSig: authSig,
-        // debug: true,
         jsParams: {
           publicKey: pkpPubKey,
           pkpPublicKey: ethers.utils.computeAddress(pkpPubKey),
@@ -415,38 +414,3 @@ export class YachtLitSdk {
     `;
   };
 }
-
-// Condition A(chainA PKP has tokens), TxA(Send to Bob's wallet on chain A)
-// Condition B(ChainB PKP has tokens), TxB(Send to Alice's wallet on chainB)
-
-// hasThreeDaysPassed = checkHasThreeDaysPassed(originTime)
-
-// pkpHasTokensOnChainA = checkCondition(conditionA) <= Alice has sent tokens to PKP on chain A
-// pkpHasTokensOnChainB = checkCondition(conditionB) <= Bob has sent tokens to PKP on chain B
-// Alice wants Bob's token on chain B and Bob wants Alice's token on chain A
-
-// if pkpHasTOkensOnChainA && pkpHasTokensOnChainB
-// Generate two transfer transactions and sign them and return them
-// return
-
-// if pkpHasTokensOnChainA
-// getpkpNonce(conditionB.chain);
-// if chainBPkpNonce = 1;
-// generate two transfer transactions
-// return
-// if threeDaysHasPassed
-// generate transferTransaction(txA.to = txB.to) //Instead of sending to Bob, send back to Alice
-// return
-// else return "swap conditions not met"
-
-// if pkpHasTokensOnChainB
-// get pkpNonce(conditionA.chain);
-// if chainAPkpNonce = 1;
-// generate two transfer transactions;
-// return
-// if threeDaysHasPassed
-// generate transferTransaction(txA.to = txB.to); // instead of sending to Alice, send back to Bob
-// return
-// else return "swap conditions not met"
-
-// TODO parse the types in the response to figure out what actually happened on the lit node and then response accordingly
