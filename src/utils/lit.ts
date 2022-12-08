@@ -1,12 +1,13 @@
 import { ethers, UnsignedTransaction } from "ethers";
 import bs58 from "bs58";
+import { SiweMessage } from "siwe";
 
 function makeNonce() {
   let result = "";
   const characters =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const charactersLength = characters.length;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 16; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
   return result;
@@ -23,10 +24,17 @@ export async function generateAuthSig(
   signer: ethers.Signer,
   chainId = 1,
   uri = "https://localhost/login",
-  version = 1,
+  version = "1",
 ): Promise<LitAuthSig> {
-  const messageToSign = `localhost wants you to sign in with your Ethereum account:\n${await signer.getAddress()},
-  )}\n\nThis is a key for Yacht-Lit-SDK\n\nURI: ${uri}\nVersion: ${version}\nChain ID: ${chainId}\nNonce: ${makeNonce()}\nIssued At: ${new Date().toISOString()}`;
+  const siweMessage = new SiweMessage({
+    domain: "localhost",
+    address: await signer.getAddress(),
+    statement: "This is a key for Yacht",
+    uri,
+    version,
+    chainId,
+  });
+  const messageToSign = siweMessage.prepareMessage();
   const sig = await signer.signMessage(messageToSign);
   return {
     sig,

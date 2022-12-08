@@ -61,6 +61,7 @@ export class YachtLitSdk {
   createERC20SwapLitAction(
     chainAParams: LitERC20SwapParams,
     chainBParams: LitERC20SwapParams,
+    originTime?: number,
   ): string {
     const chainAIsValid = Object.keys(LitChainIds).includes(chainAParams.chain);
     const chainBIsValid = Object.keys(LitChainIds).includes(chainAParams.chain);
@@ -82,11 +83,20 @@ export class YachtLitSdk {
       ...chainBParams,
       counterPartyAddress: chainAParams.counterPartyAddress,
     });
+    const chainAClawbackTransaction = this.generateUnsignedERC20Transaction({
+      ...chainAParams,
+    });
+    const chainBClawbackTransaction = this.generateUnsignedERC20Transaction({
+      ...chainBParams,
+    });
     return this.generateERC20SwapLitActionCode(
       chainACondition,
       chainBCondition,
       chainATransaction,
       chainBTransaction,
+      chainAClawbackTransaction,
+      chainBClawbackTransaction,
+      originTime,
     );
   }
 
@@ -209,7 +219,7 @@ export class YachtLitSdk {
   async generateAuthSig(
     chainId = 1,
     uri = "https://localhost/login",
-    version = 1,
+    version = "1",
   ) {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
@@ -241,7 +251,6 @@ export class YachtLitSdk {
     ipfsCID?: string;
     code?: string;
   }) {
-    console.log(ethers.utils.computeAddress(pkpPubKey));
     try {
       await this.connect();
       const response = await this.litClient.executeJs({
@@ -290,6 +299,8 @@ export class YachtLitSdk {
     chainBCondition: LitERC20SwapCondition,
     chainATransaction: LitUnsignedTransaction,
     chainBTransaction: LitUnsignedTransaction,
+    chainAClawbackTransaction: LitUnsignedTransaction,
+    chainBClawbackTransaction: LitUnsignedTransaction,
     originTime?: number,
   ) => {
     return `
@@ -301,6 +312,12 @@ export class YachtLitSdk {
         const chainBCondition = ${JSON.stringify(chainBCondition)}
         const chainATransaction = ${JSON.stringify(chainATransaction)}
         const chainBTransaction = ${JSON.stringify(chainBTransaction)}
+        const chainAClawbackTransaction = ${JSON.stringify(
+          chainAClawbackTransaction,
+        )}
+        const chainBClawbackTransaction = ${JSON.stringify(
+          chainBClawbackTransaction,
+        )}
         const hashTransaction = (tx) => {
           return ethers.utils.arrayify(
             ethers.utils.keccak256(
@@ -366,13 +383,9 @@ export class YachtLitSdk {
             Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
             return;
           }
-          const chainAClawbackTransaction = {
-            ...chainATransaction,
-            to: chainBTransaction.to,
-          };
           await Lit.Actions.signEcdsa({
             toSign: hashTransaction(chainAClawbackTransaction),
-            publicKey: pkpUncompressedPublicKey,
+            publicKey: publicKey,
             sigName: "chainASignature",
           });
           Lit.Actions.setResponse({
@@ -392,18 +405,14 @@ export class YachtLitSdk {
             Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
             return;
           }
-          const chainBClawbackTransaction = {
-            ...chainBTransaction,
-            to: chainATransaction.to,
-          };
           await Lit.Actions.signEcdsa({
             toSign: hashTransaction(chainBClawbackTransaction),
-            publicKey: pkpUncompressedPublicKey,
-            sigName: "chainASignature",
+            publicKey: publicKey,
+            sigName: "chainBSignature",
           });
           Lit.Actions.setResponse({
             response: JSON.stringify({
-              chainATransaction: chainBClawbackTransaction,
+              chainBTransaction: chainBClawbackTransaction,
             }),
           });
           return;
