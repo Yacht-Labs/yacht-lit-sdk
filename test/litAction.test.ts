@@ -1,8 +1,5 @@
-import { LitActionsSDK } from "./../src/@types/yacht-lit-sdk";
-import { LitAuthSig, YachtLitSdk } from "../src";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { ethers, UnsignedTransaction } from "ethers";
-import { LitERC20SwapCondition } from "../src/@types/yacht-lit-sdk";
+import { YachtLitSdk } from "../src";
+import { ethers } from "ethers";
 import { expect } from "chai";
 
 describe("Lit Action Code Tests", () => {

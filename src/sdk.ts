@@ -156,7 +156,12 @@ export class YachtLitSdk {
     };
   }
 
-  async mintGrantBurnWithJs(litActionCode: string): Promise<{
+  async uploadToIPFS(code: string): Promise<string> {
+    const { path } = await uploadToIPFS(code);
+    return path;
+  }
+
+  async mintGrantBurnWithLitAction(ipfsCID: string): Promise<{
     ipfsCID: string;
     pkp: {
       tokenId: string;
@@ -165,10 +170,8 @@ export class YachtLitSdk {
     };
   }> {
     try {
-      const { path: ipfsCID } = await uploadToIPFS(litActionCode);
-      await sleep(10000);
       const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
-      const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
+      const minedMintGrantBurnTx = await mintGrantBurnTx.wait(2);
       const pkpTokenId = ethers.BigNumber.from(
         minedMintGrantBurnTx.logs[1].topics[3],
       ).toString();
@@ -267,11 +270,6 @@ export class YachtLitSdk {
     } catch (err) {
       console.log(err);
     }
-  }
-
-  private async uploadToIPFS(code: string) {
-    //TODO: Figure out how to use version 17 of ipfs-core
-    return await uploadToIPFS(code);
   }
 
   private generateTransferCallData(counterParty: string, amount: string) {
