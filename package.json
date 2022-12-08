@@ -20,6 +20,7 @@
     "bs58": "^5.0.0",
     "ethers": "^5.7.2",
     "ipfs-core": "^0.14.0",
+    "siwe": "^1.1.6",
     "typechain": "^8.1.1"
   },
   "devDependencies": {
