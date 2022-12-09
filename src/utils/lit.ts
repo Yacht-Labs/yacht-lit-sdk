@@ -66,26 +66,26 @@ export function didCounterPartySendTransaction(tx: UnsignedTransaction) {
   const chain = tx.chainId;
 }
 
-// ethereum: 1;
-// polygon: 137;
-// fantom: 250;
-// xdai: 100;
-// bsc: 56;
-// arbitrum: 42161;
-// avalanche: 43114;
-// fuji: 43113;
-// harmony: 1666600000;
-// kovan: 42;
-// mumbai: 80001;
-// goerli: 5;
-// ropsten: 3;
-// rinkeby: 4;
-// cronos: 25;
-// optimism: 10;
-// celo: 42220;
-// aurora: 1313161554;
-// eluvio: 955305;
-// alfajores: 44787;
-// xdc: 50;
-// evmos: 9001;
-// evmosTestnet: 9000;
+export function getBytes32FromMultihash(multihash: string) {
+  const decoded = bs58.decode(multihash);
+
+  return {
+    digest: `0x${Buffer.from(decoded.slice(2)).toString("hex")}`,
+    hashFunction: decoded[0],
+    size: decoded[1],
+  };
+}
+
+export function ipfsIdToIpfsIdHash(ipfsId: string) {
+  const multihashStruct = getBytes32FromMultihash(ipfsId);
+  // console.log("multihashStruct", multihashStruct);
+  const packed = ethers.utils.solidityPack(
+    ["bytes32", "uint8", "uint8"],
+    [
+      multihashStruct.digest,
+      multihashStruct.hashFunction,
+      multihashStruct.size,
+    ],
+  );
+  return ethers.utils.keccak256(packed);
+}
