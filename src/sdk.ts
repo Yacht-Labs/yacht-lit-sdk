@@ -1,4 +1,4 @@
-import { getBytesFromMultihash, sleep } from "./utils/lit";
+import { getBytesFromMultihash } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
@@ -21,21 +21,23 @@ import {
 } from "./@types/yacht-lit-sdk";
 
 export class YachtLitSdk {
-  private provider: ethers.providers.JsonRpcProvider;
   private pkpContract: PKPNFT;
-  private signer: ethers.Signer;
+  private signer: ethers.Wallet;
   private litClient: any;
+  /**
+   * @constructor
+   * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
+   * @param {ethers.Wallet} signer - The wallet that will be used to mint a PKP
+   */
   constructor(
-    provider: ethers.providers.JsonRpcProvider,
-    litNetwork?: string,
-    signer?: ethers.Signer,
+    signer?: ethers.Wallet,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
   ) {
-    this.provider = provider;
     this.signer = signer ? signer : ethers.Wallet.createRandom();
-    this.litClient = litNetwork
-      ? new LitJsSdk.LitNodeClient({ litNetwork, debug: false })
-      : new LitJsSdk.LitNodeClient({ debug: false });
+    this.litClient = new LitJsSdk.LitNodeClient({
+      litNetwork: "serrano",
+      debug: false,
+    });
     this.pkpContract = new ethers.Contract(
       pkpContractAddress,
       pkpNftContract.abi,
@@ -57,7 +59,13 @@ export class YachtLitSdk {
     }
     return await this.pkpContract.mintNext(2, { value: 1e14 });
   }
-
+  /**
+   * Generates the Lit Action code that will be uploaded to IPFS and manages the logic for the cross chain atomic swap
+   * @param {LitERC20SwapParams} chainAParams - Parameters for the swap on Chain A
+   * @param {LitERC20SwapParams} chainBParams - Parameters for the swap on Chain B
+   * @param originTime - Only used for testing.  Leave blank
+   * @returns {string} Lit Action code
+   */
   createERC20SwapLitAction(
     chainAParams: LitERC20SwapParams,
     chainBParams: LitERC20SwapParams,
@@ -127,6 +135,11 @@ export class YachtLitSdk {
     };
   }
 
+  /**
+   * Utility function for generating an unsigned ERC20 transaction. Used for testing
+   * @param transactionParams
+   * @returns
+   */
   generateUnsignedERC20Transaction(transactionParams: {
     counterPartyAddress: string;
     tokenAddress: string;
@@ -156,18 +169,25 @@ export class YachtLitSdk {
     };
   }
 
+  /**
+   *
+   * @param {string} code - The Lit Action code to be uploaded to IPFS
+   * @returns {string} The IPFS CID to locate your record
+   */
   async uploadToIPFS(code: string): Promise<string> {
     const { path } = await uploadToIPFS(code);
     return path;
   }
 
+  /**
+   * Mints a PKP NFT on the Polygon Mumbai network, attaches the Lit Action code to the PKP, then burns the PKP so that the code attached to the PKP cannot be changed.
+   * @param ipfsCID - The IPFS cid where your Lit Action code is stored
+   * @returns PKP info with tokenID, publicKey, and address
+   */
   async mintGrantBurnWithLitAction(ipfsCID: string): Promise<{
-    ipfsCID: string;
-    pkp: {
-      tokenId: string;
-      publicKey: string;
-      compressedPublicKey: string;
-    };
+    tokenId: string;
+    publicKey: string;
+    address: string;
   }> {
     try {
       const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
@@ -175,14 +195,11 @@ export class YachtLitSdk {
       const pkpTokenId = ethers.BigNumber.from(
         minedMintGrantBurnTx.logs[1].topics[3],
       ).toString();
-      const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+      const publicKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
       return {
-        ipfsCID,
-        pkp: {
-          tokenId: pkpTokenId,
-          publicKey: pkpPubKey,
-          compressedPublicKey: ethers.utils.computeAddress(pkpPubKey),
-        },
+        tokenId: pkpTokenId,
+        publicKey: publicKey,
+        address: ethers.utils.computeAddress(publicKey),
       };
     } catch (err) {
       throw new Error(`Error in mintGrantBurnWithJs: ${err}`);
@@ -218,7 +235,13 @@ export class YachtLitSdk {
       throw new Error(`Error getting pkp public key: ${err}`);
     }
   }
-
+  /**
+   * Generates an auth sig to be used for executing a Lit Action.  All parameters are optional and do not need to be changed.
+   * @param [chainId]
+   * @param [uri]
+   * @param [version]
+   * @returns A valid auth sig for use with the Lit Protocol
+   */
   async generateAuthSig(
     chainId = 1,
     uri = "https://localhost/login",
@@ -226,43 +249,36 @@ export class YachtLitSdk {
   ) {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
-
-  async mintPKPandExecuteJs(litActionCode: string) {
-    try {
-      const mintTx = await this.mintPKP();
-      const minedMintTx = await mintTx.wait();
-      const pkpTokenId = ethers.BigNumber.from(
-        minedMintTx.logs[1].topics[3],
-      ).toString();
-      const pkpPubKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
-      const { path: ipfsCID } = await uploadToIPFS(litActionCode);
-      const authSig = await this.generateAuthSig();
-      await this.runLitAction({ ipfsCID, authSig, pkpPubKey });
-    } catch (err) {
-      console.log(err);
-    }
-  }
-
+  /**
+   * Executes the Lit Action code associated with the given PKP.  If the swap conditions have been met, then it will respond with the transactions that need to be signed. If not, it will respond with the string "Conditions for swap not met!"
+   * @param {Object} LitActionParameters - Information needed to execute a Lit Action for a cross chain atomic swap
+   * @param {string} LitActionParameters.pkpPublicKey - The public key of the PKP associated with the Lit Action code
+   * @param {string} LitActionParameters.ipfsCID - The IPFS cid where the Lit Action code is located
+   * @param {string} code - Arbitrary javascript to be run.  Used for testing purposes and will not work if the PKP has been associated with a Lit Action and subsequently burned
+   * @param authSig - Used for testing purposes.  The function will automatically generate an auth sig if not provided
+   * @param {code}
+   * @returns
+   */
   async runLitAction({
-    authSig,
-    pkpPubKey,
+    pkpPublicKey,
     ipfsCID,
     code,
+    authSig,
   }: {
-    authSig: any;
-    pkpPubKey: string;
+    pkpPublicKey: string;
     ipfsCID?: string;
     code?: string;
+    authSig?: any;
   }) {
     try {
       await this.connect();
       const response = await this.litClient.executeJs({
         ipfsId: ipfsCID,
         code: code,
-        authSig: authSig,
+        authSig: authSig ? authSig : await this.generateAuthSig(),
         jsParams: {
-          publicKey: pkpPubKey,
-          pkpPublicKey: ethers.utils.computeAddress(pkpPubKey),
+          pkpAddress: ethers.utils.computeAddress(pkpPublicKey),
+          pkpPublicKey: pkpPublicKey,
           authSig,
         },
       });
@@ -281,7 +297,12 @@ export class YachtLitSdk {
       amount,
     ]);
   }
-
+  /**
+   * Utility function that can sign a transaction with a given private key
+   * @param tx - Transaction to be signed
+   * @param privateKey - Private key which will sign the transaction
+   * @returns A serialized transaction
+   */
   public signTransaction(tx: UnsignedTransaction, privateKey: string) {
     function getMessage(tx: UnsignedTransaction) {
       return keccak256(arrayify(serialize(tx)));
@@ -333,12 +354,12 @@ export class YachtLitSdk {
         const generateSwapTransactions = async () => {
           await LitActions.signEcdsa({
             toSign: hashTransaction(chainATransaction),
-            publicKey: publicKey,
+            publicKey: pkpPublicKey,
             sigName: "chainASignature",
           });
           await LitActions.signEcdsa({
             toSign: hashTransaction(chainBTransaction),
-            publicKey: publicKey,
+            publicKey: pkpPublicKey,
             sigName: "chainBSignature",
           });
           Lit.Actions.setResponse({
@@ -347,9 +368,9 @@ export class YachtLitSdk {
         };
       
         chainACondition.parameters = chainBCondition.parameters = [
-          pkpPublicKey,
+          pkpAddress,
         ];
-        chainATransaction.from = chainBTransaction.from = pkpPublicKey;
+        chainATransaction.from = chainBTransaction.from = pkpAddress;
       
         const chainAConditionsPass = await Lit.Actions.checkConditions({
           conditions: [chainACondition],
@@ -369,8 +390,8 @@ export class YachtLitSdk {
         }
       
         const threeDaysHasPassed = checkHasThreeDaysPassed(originTime);
-        const chainANonce = await Lit.Actions.getLatestNonce({address: pkpPublicKey, chain: chainACondition.chain});
-        const chainBNonce = await Lit.Actions.getLatestNonce({address: pkpPublicKey, chain: chainBCondition.chain});
+        const chainANonce = await Lit.Actions.getLatestNonce({address: pkpAddress, chain: chainACondition.chain});
+        const chainBNonce = await Lit.Actions.getLatestNonce({address: pkpAddress, chain: chainBCondition.chain});
 
         if (chainAConditionsPass) {
           if (chainBNonce === 1) {
@@ -383,7 +404,7 @@ export class YachtLitSdk {
           }
           await Lit.Actions.signEcdsa({
             toSign: hashTransaction(chainAClawbackTransaction),
-            publicKey: publicKey,
+            publicKey: pkpPublicKey,
             sigName: "chainASignature",
           });
           Lit.Actions.setResponse({
@@ -405,7 +426,7 @@ export class YachtLitSdk {
           }
           await Lit.Actions.signEcdsa({
             toSign: hashTransaction(chainBClawbackTransaction),
-            publicKey: publicKey,
+            publicKey: pkpPublicKey,
             sigName: "chainBSignature",
           });
           Lit.Actions.setResponse({

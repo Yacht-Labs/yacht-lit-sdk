@@ -1,17 +1,6 @@
-import { ethers, UnsignedTransaction } from "ethers";
+import { ethers } from "ethers";
 import bs58 from "bs58";
 import { SiweMessage } from "siwe";
-
-function makeNonce() {
-  let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const charactersLength = characters.length;
-  for (let i = 0; i < 16; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
-}
 
 export type LitAuthSig = {
   sig: string;
@@ -60,10 +49,6 @@ export function checkHasThreeDaysPassed(previousTime: number) {
   const currentTime = Date.now();
   const difference = currentTime - previousTime;
   return difference / (1000 * 3600 * 24) >= 3 ? true : false;
-}
-
-export function didCounterPartySendTransaction(tx: UnsignedTransaction) {
-  const chain = tx.chainId;
 }
 
 export function getBytes32FromMultihash(multihash: string) {

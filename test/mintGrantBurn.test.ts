@@ -2,14 +2,9 @@ import {
   PKP_CONTRACT_ADDRESS_MUMBAI,
   PKP_PERMISSIONS_CONTRACT_ADDRESS,
 } from "./../src/constants/index";
-import {
-  generateAuthSig,
-  getBytesFromMultihash,
-  ipfsIdToIpfsIdHash,
-  YachtLitSdk,
-} from "../src";
+import { getBytesFromMultihash } from "../src/utils";
+import { YachtLitSdk } from "../src";
 import { ethers } from "ethers";
-import { sleep } from "../src";
 import PKPNFTContract from "../src/abis/PKPNFT.json";
 import PKPPermissionsContract from "../src/abis/PKPPermissions.json";
 import { PKPNFT, PKPPermissions } from "../typechain-types/contracts";
@@ -23,8 +18,6 @@ describe("Mint Grant BurnTests", () => {
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // FAU TOKEN - GOERLI
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // TEST TOKEN - MUMBAI
   const sdk = new YachtLitSdk(
-    provider,
-    "serrano",
     new ethers.Wallet(
       // Add private key with Matic to pass tests
       "b6d84955bc272c590344b528e4cebc73a72b0fc250b176680ff39807ee272f2b",
@@ -68,9 +61,9 @@ describe("Mint Grant BurnTests", () => {
       PKPNFTContract.abi,
       provider,
     ) as PKPNFT;
-    pkpTokenId = pkpTokenData.pkp.tokenId;
+    pkpTokenId = pkpTokenData.tokenId;
     pkpNftPublicKey = await pkpContract.getPubkey(pkpTokenId);
-    expect(pkpNftPublicKey).toEqual(pkpTokenData.pkp.publicKey);
+    expect(pkpNftPublicKey).toEqual(pkpTokenData.publicKey);
   }, 30000);
 
   it("The PKP has permissions to run the ipfsCID", async () => {

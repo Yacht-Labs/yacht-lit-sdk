@@ -23,6 +23,52 @@ export type LitERC20SwapCondition = {
   };
 };
 
+export type LitSwapTransaction = {
+  counterPartyAddress: string;
+  tokenAddress: string;
+  chain: string;
+  amount: string;
+  decimals: number;
+  from?: string | undefined;
+  nonce?: number | undefined;
+};
+export type LitActionCodeResponseA = {
+  response: {
+    chainATransaction?: {
+      counterPartyAddress: string;
+      tokenAddress: string;
+      chain: string;
+      amount: string;
+      decimals: number;
+      from?: string | undefined;
+      nonce?: number | undefined;
+    };
+    chainBTransaction?: {
+      counterPartyAddress: string;
+      tokenAddress: string;
+      chain: string;
+      amount: string;
+      decimals: number;
+      from?: string | undefined;
+      nonce?: number | undefined;
+    };
+  };
+  signatures: {
+    chainASignature?: any;
+    chainBSignature?: any;
+  };
+};
+export type LitActionCodeResponse = {
+  response: {
+    chainATransaction?: LitSwapTransaction;
+    chainBTransaction?: LitSwapTransaction;
+  };
+  signatures: {
+    chainASignature?: any;
+    chainBSignature?: any;
+  };
+};
+
 export type LitERC20SwapParams = {
   counterPartyAddress: string;
   tokenAddress: string;

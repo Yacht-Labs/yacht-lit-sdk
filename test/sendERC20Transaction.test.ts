@@ -26,7 +26,7 @@ describe("Yacht-Lit SDK ERC20 Transaction Tests", () => {
     });
 
     it("Generates and sends an ERC20 token transfer", async () => {
-      const sdk = new YachtLitSdk(ethers.provider, "serrano", owner);
+      const sdk = new YachtLitSdk(owner);
       const amountToTransfer = "10";
       const unsignedTransaction = sdk.generateUnsignedERC20Transaction({
         tokenAddress: deployedYachtToken.address,

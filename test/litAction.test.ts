@@ -9,10 +9,6 @@ describe("Lit Action Code Tests", () => {
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // FAU TOKEN
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // TEST TOKEN
   const sdk = new YachtLitSdk(
-    new ethers.providers.JsonRpcProvider(
-      "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
-    ),
-    "serrano",
     new ethers.Wallet(
       "0ef7ff778c8c7d9320d9d9475b8e4f1699ec7185b7f6f56d1c0a11a766e4b01b",
       new ethers.providers.JsonRpcProvider(
@@ -46,7 +42,7 @@ describe("Lit Action Code Tests", () => {
 
       response = await sdk.runLitAction({
         authSig,
-        pkpPubKey:
+        pkpPublicKey:
           "0x04f944cbf8a0ce169284c6954af9f5d06790c3111228432fa248f3048e2105436b1cd09a69066d57db700e8c8938ab68538223512d917dbbbe57884c2da8f308a5",
         code: LitActionCode,
       });
@@ -138,7 +134,7 @@ describe("Lit Action Code Tests", () => {
 
       response = await sdk.runLitAction({
         authSig,
-        pkpPubKey:
+        pkpPublicKey:
           "0x0487375eeb2fb53b3a13c53be11550f880e41a7a23b20b77bd5cc96a37014ffe7755b0a84419c62e3f773843ff96cb79d28065c6dee988a051f901ab141b392b33",
         code: LitActionCode,
       });
@@ -178,7 +174,7 @@ describe("Lit Action Code Tests", () => {
 
       response = await sdk.runLitAction({
         authSig,
-        pkpPubKey:
+        pkpPublicKey:
           "0x04f2d75d0bdeeb4174fb7589e1c8e4c6b5a6bb13980daff4e500058197ab42427e38aaf74d85ffbb9a5cf3b40473d53a143e86452305c5afee845c3e43e398956a",
         code: LitActionCode,
       });
