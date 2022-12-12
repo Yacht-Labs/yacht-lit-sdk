@@ -12,7 +12,7 @@ import {
   UnsignedTransaction,
 } from "ethers/lib/utils";
 import { serialize } from "@ethersproject/transactions";
-import { PKPNFT } from "../typechain-types/contracts";
+import { PKPNFT } from "../typechain-types/contracts/PKPNFT";
 import {
   LitERC20SwapCondition,
   LitChainIds,
