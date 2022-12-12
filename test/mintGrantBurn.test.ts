@@ -12,7 +12,8 @@ import { ethers } from "ethers";
 import { sleep } from "../src";
 import PKPNFTContract from "../src/abis/PKPNFT.json";
 import PKPPermissionsContract from "../src/abis/PKPPermissions.json";
-import { PKPNFT, PKPPermissions } from "../typechain-types/contracts";
+import { PKPNFT } from "../typechain-types/contracts/PKPNFT";
+import { PKPPermissions } from "../typechain-types/contracts/PKPPermissions";
 
 const provider = new ethers.providers.JsonRpcProvider(
   "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
