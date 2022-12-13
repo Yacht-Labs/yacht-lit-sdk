@@ -24,6 +24,7 @@ export class YachtLitSdk {
   private pkpContract: PKPNFT;
   private signer: ethers.Signer;
   private litClient: any;
+
   /**
    * @constructor
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
