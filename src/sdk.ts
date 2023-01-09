@@ -236,6 +236,7 @@ export class YachtLitSdk {
       throw new Error(`Error getting pkp public key: ${err}`);
     }
   }
+
   /**
    * Generates an auth sig to be used for executing a Lit Action.  All parameters are optional and do not need to be changed.
    * @param [chainId]
@@ -250,6 +251,7 @@ export class YachtLitSdk {
   ) {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
+
   /**
    * Executes the Lit Action code associated with the given PKP.  If the swap conditions have been met, then it will respond with the transactions that need to be signed. If not, it will respond with the string "Conditions for swap not met!"
    * @param {Object} LitActionParameters - Information needed to execute a Lit Action for a cross chain atomic swap
@@ -280,7 +282,7 @@ export class YachtLitSdk {
         jsParams: {
           pkpAddress: ethers.utils.computeAddress(pkpPublicKey),
           pkpPublicKey: pkpPublicKey,
-          authSig,
+          authSig: authSig ? authSig : await this.generateAuthSig(),
         },
       });
       return response;
@@ -298,6 +300,7 @@ export class YachtLitSdk {
       amount,
     ]);
   }
+
   /**
    * Utility function that can sign a transaction with a given private key
    * @param tx - Transaction to be signed

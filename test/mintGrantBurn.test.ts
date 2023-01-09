@@ -74,7 +74,7 @@ describe("Mint Grant BurnTests", () => {
       provider,
     ) as PKPPermissions;
     const [permittedAction] = await pkpPermissionsContract.getPermittedActions(
-      pkpTokenId,
+      ethers.BigNumber.from(pkpTokenId),
     );
     expect(getBytesFromMultihash(ipfsCID)).toEqual(permittedAction);
   }, 10000);

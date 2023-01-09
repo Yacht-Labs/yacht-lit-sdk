@@ -32,6 +32,7 @@ export type LitSwapTransaction = {
   from?: string | undefined;
   nonce?: number | undefined;
 };
+
 export type LitActionCodeResponseA = {
   response: {
     chainATransaction?: {
@@ -58,6 +59,7 @@ export type LitActionCodeResponseA = {
     chainBSignature?: any;
   };
 };
+
 export type LitActionCodeResponse = {
   response: {
     chainATransaction?: LitSwapTransaction;
