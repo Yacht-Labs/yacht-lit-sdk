@@ -8,6 +8,8 @@ In our use case, we are using Lit Actions with PKPs to enable atomic cross chain
 
 To compile and run tests locally:
 
+IMPORTANT NOTE: Some tests consume TEST MATIC. Before running the test suite, check that the mumbai address on line 24 of /test/mintGrantBurn.test.ts has at least .2 TEST MATIC in order to pass all tests successfully.
+
 ```
 yarn install
 npx hardhat compile
