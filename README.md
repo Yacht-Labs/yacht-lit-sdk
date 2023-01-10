@@ -27,6 +27,16 @@ yarn add ethers
 yarn add lit-swap-sdk
 ```
 
+To develop against a local version of the package in your own project, you can change the package version in your project's package.json to the local path of the package:
+
+```
+"lit-swap-sdk": "file:**PATH TO LOCAL PACKAGE HERE**",
+```
+
+You'll want to set up your code environment to watch for changes in this package and automatically compile any changes since its the build folder that's actually imported as the package.
+
+Finally, you'll also want to make sure that, if you're using typescript in your project, to disable the `checkJs` flag in `tsconfig`. If you don't then it will treat the packages build folder as typescript rather than javascript and everything will break :)
+
 _to mint a PKP, you will need an ethers signer that has MATIC tokens on the Polygon mumbai network. If you just want to generate Lit Action code or execute the Lit Action once it has already been associated with a PKP, you do **not** need an ethers signer object_
 
 Instantiate SDK:
