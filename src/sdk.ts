@@ -212,16 +212,13 @@ export class YachtLitSdk {
       throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
     }
     try {
+      const feeData = await this.signer.provider.getFeeData();
       return await this.pkpContract.mintGrantAndBurnNext(
         2,
         getBytesFromMultihash(ipfsCID),
         {
           value: 1e14,
-          maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
-          maxPriorityFeePerGas: ethers.utils
-            .parseUnits("100", "gwei")
-            .toString(),
-          gasLimit: "1000000",
+          maxFeePerGas: feeData.maxFeePerGas as ethers.BigNumber,
         },
       );
     } catch (err) {
