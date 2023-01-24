@@ -156,6 +156,7 @@ export class YachtLitSdk {
       to: transactionParams.tokenAddress,
       nonce: transactionParams.nonce ? transactionParams.nonce : 0,
       chainId: LitChainIds[transactionParams.chain],
+      gasLimit: "1000000",
       from: transactionParams.from
         ? transactionParams.from
         : "{{pkpPublicKey}}",
@@ -385,6 +386,8 @@ export class YachtLitSdk {
 
         chainATransaction.maxFeePerGas = chainAMaxFeePerGas;
         chainBTransaction.maxFeePerGas = chainBMaxFeePerGas;
+        chainAClawbackTransaction.maxFeePerGas = chainAMaxFeePerGas;
+        chainBClawbackTransaction.maxFeePerGas = chainBMaxFeePerGas;
         
         const chainAConditionsPass = await Lit.Actions.checkConditions({
           conditions: [chainACondition],
