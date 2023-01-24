@@ -4,17 +4,22 @@ Programmable Key Pairs are valid ECDSA wallets with a private key and a public k
 
 Lit Actions are JavaScript functions that can use PKPs to sign transactions. They are akin to Javascript smart contracts that can work cross chain because they are able to sign messages using the PKP on any chain that Lit Protocol has been set up for. Lit Actions can read on-chain data take action based on the state of the network.
 
-In our use case, we are using Lit Actions with PKPs to enable atomic cross chains swaps. We mint a PKP and associate it with Lit Action code that determines whether the PKP address has a certain balance of ERC20 tokens on two different chains. When two users send their tokens to the PKP within a three day time limit, the users are able to generate transactions which will swap the tokens between the two counterparties. **Because we minting the PKP, associating it with the Lit Action code, and burning the PKP all within an atmoic transaction, nobody can change the code that the PKP is associated with**. This gives counterparties the assurance that if both parties send their ERC20 tokens to the address, then they will be able to swap the tokens. If only one party sends their tokens to the PKP address, after three days the Lit Action will generate a clawback transaction that will allow the party who sent their tokens to retrieve them.
+In our use case, we are using Lit Actions with PKPs to enable atomic cross chains swaps. We mint a PKP and associate it with Lit Action code that determines whether the PKP address has a certain balance of ERC20 tokens on two different chains. When two users send their tokens to the PKP within a three day time limit, the users are able to generate transactions which will swap the tokens between the two counterparties. **Because we are minting the PKP, associating it with the Lit Action code, and burning the PKP all within an atmoic transaction, nobody can change the code that the PKP is associated with**. This gives counterparties the assurance that if both parties send their ERC20 tokens to the address, then they will be able to swap the tokens. If only one party sends their tokens to the PKP address, after three days the Lit Action will generate a clawback transaction that will allow the party who sent their tokens to retrieve them.
 
+---
+
+**TESTING:**
 To compile and run tests locally:
 
-IMPORTANT NOTE: Some tests consume TEST MATIC. Before running the test suite, check that the mumbai address on line 24 of /test/mintGrantBurn.test.ts has at least .2 TEST MATIC in order to pass all tests successfully.
+IMPORTANT NOTE: Some tests consume TEST MATIC and Goerli ETH. To ensure the tests pass, copy the .env.sample file into a .env file, and add a MATIC private key and a Goerli private key each with some native tokens. You can find a faucet at https://goerlifaucet.com/ and https://mumbaifaucet.com/
 
 ```
 yarn install
 npx hardhat compile
-npm test
+yarn test
 ```
+
+---
 
 Make sure you are using Node version >=16. You can download the Node Version Manager (nvm) [here](https://github.com/nvm-sh/nvm)
 
@@ -33,9 +38,13 @@ To develop against a local version of the package in your own project, you can c
 "lit-swap-sdk": "file:**PATH TO LOCAL PACKAGE HERE**",
 ```
 
-You'll want to set up your code environment to watch for changes in this package and automatically compile any changes since its the build folder that's actually imported as the package.
+You'll want to set up your code environment to watch for changes in this package's directory and automatically compile any changes since its the build folder that's actually imported as the package.
 
 Finally, you'll also want to make sure that, if you're using typescript in your project, to disable the `checkJs` flag in `tsconfig`. If you don't then it will treat the packages build folder as typescript rather than javascript and everything will break :)
+
+---
+
+**USING THE SDK:**
 
 _to mint a PKP, you will need an ethers signer that has MATIC tokens on the Polygon mumbai network. If you just want to generate Lit Action code or execute the Lit Action once it has already been associated with a PKP, you do **not** need an ethers signer object_
 
@@ -80,14 +89,14 @@ This will return the required litActionCode to mint the PKP. You can see our log
 Once you have the Lit Action code generated, it's time to upload the Lit Action code to IPFS and associate it with a new PKP:
 
 ```typescript
-const ipfsCID = await sdk.uploadToIPFS(litActionCode);
+const ipfsCID = await sdk.getIPFSHash(litActionCode);
 const pkpInfo = await sdk.mintGrantBurnWithLitAction(ipfsCID);
 ```
 
 The object returned by `mintGrantBurnWithLitAction` has the following properties: `tokenId`, `publicKey` and `address`. The address is where you'll send your ERC20 tokens. The publicKey is the uncompressed public key used by the ECDSA algorithm to derive the address. To execute the Lit Action, we'll need the `ipfsCID` and the `publicKey`:
 
 ```typescript
-const response = await sdk.runLitAction({ipfsCID: ipfsCID, pkpPublicKey: pkpInfo.publicKey);
+const response = await sdk.runLitAction({code: litActionCode, pkpPublicKey: pkpInfo.publicKey);
 ```
 
 A response when both parties have sent their ERC20 tokens to the pkp address looks like the following:
@@ -137,3 +146,5 @@ await chainBProvider.sendTransaction(
   ),
 );
 ```
+
+Please note that using IPFS to upload the code can sometimes fail. In this case, we are only generating the IPFS hash for the code. The Lit Protocol Nodes also hash the Lit Action Code and generate an IPFS hash, so if you pass the code into the sdk you don't actually need to upload the code to IPFS. We are exploring ways to make the IPFS upload function more robust, but until then we recommend only getting the hash of the code and passing the code to the sdk.

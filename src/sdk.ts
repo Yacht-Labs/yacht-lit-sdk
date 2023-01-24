@@ -1,6 +1,6 @@
 import { getBytesFromMultihash } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
@@ -19,12 +19,14 @@ import {
   LitUnsignedTransaction,
   LitERC20SwapParams,
 } from "./@types/yacht-lit-sdk";
+import { create, IPFS } from "ipfs-core";
+import Hash from "ipfs-only-hash";
 
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
   private signer: ethers.Signer;
   private litClient: any;
-
+  private ipfs: IPFS | undefined = undefined;
   /**
    * @constructor
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
@@ -180,6 +182,10 @@ export class YachtLitSdk {
     return path;
   }
 
+  async getIPFSHash(code: string): Promise<string> {
+    return await Hash.of(code);
+  }
+
   /**
    * Mints a PKP NFT on the Polygon Mumbai network, attaches the Lit Action code to the PKP, then burns the PKP so that the code attached to the PKP cannot be changed.
    * @param ipfsCID - The IPFS cid where your Lit Action code is stored
@@ -213,6 +219,7 @@ export class YachtLitSdk {
     }
     try {
       const feeData = await this.signer.provider.getFeeData();
+      // estimateGAs * feeData.maxFeePerGas
       return await this.pkpContract.mintGrantAndBurnNext(
         2,
         getBytesFromMultihash(ipfsCID),
@@ -264,11 +271,15 @@ export class YachtLitSdk {
     ipfsCID,
     code,
     authSig,
+    chainAMaxFeePerGas,
+    chainBMaxFeePerGas,
   }: {
     pkpPublicKey: string;
     ipfsCID?: string;
     code?: string;
     authSig?: any;
+    chainAMaxFeePerGas: string;
+    chainBMaxFeePerGas: string;
   }) {
     try {
       await this.connect();
@@ -280,6 +291,8 @@ export class YachtLitSdk {
           pkpAddress: ethers.utils.computeAddress(pkpPublicKey),
           pkpPublicKey: pkpPublicKey,
           authSig: authSig ? authSig : await this.generateAuthSig(),
+          chainAMaxFeePerGas,
+          chainBMaxFeePerGas,
         },
       });
       return response;
@@ -372,7 +385,10 @@ export class YachtLitSdk {
           pkpAddress,
         ];
         chainATransaction.from = chainBTransaction.from = pkpAddress;
-      
+
+        chainATransaction.maxFeePerGas = chainAMaxFeePerGas;
+        chainBTransaction.maxFeePerGas = chainBMaxFeePerGas;
+        
         const chainAConditionsPass = await Lit.Actions.checkConditions({
           conditions: [chainACondition],
           authSig,

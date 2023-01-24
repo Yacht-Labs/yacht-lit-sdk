@@ -1,52 +1,86 @@
-import { YachtLitSdk } from "../src";
-import { ethers } from "ethers";
+import { LitERC20SwapParams, YachtLitSdk } from "../src";
+import { ethers, Wallet } from "ethers";
 import { expect } from "chai";
+import {
+  getGoerliPrivateKey,
+  getGoerliProviderUrl,
+  getMumbaiPrivateKey,
+  getMumbaiProviderUrl,
+} from "../src/utils/environment";
+import TestTokenContract from "../src/abis/TestToken.json";
+import { TestToken } from "../typechain-types/contracts/TestToken";
 
 describe("Lit Action Code Tests", () => {
   let response: any;
-  const counterPartyAAddress = "0x630A5FA5eA0B94daAe707fE105404749D52909B9";
-  const counterPartyBAddress = "0x96242814208590C563AAFB6270d6875A12C5BC45";
-  const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // FAU TOKEN
-  const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // TEST TOKEN
-  const sdk = new YachtLitSdk(
-    new ethers.Wallet(
-      "0ef7ff778c8c7d9320d9d9475b8e4f1699ec7185b7f6f56d1c0a11a766e4b01b",
-      new ethers.providers.JsonRpcProvider(
-        "https://polygon-mumbai.g.alchemy.com/v2/fbWG-Mg4NtNwWVOP-MyV73Yu5EGxLT8Z",
-      ),
-    ),
+  const goerliProvider = new ethers.providers.JsonRpcProvider(
+    getGoerliProviderUrl(),
   );
-  const chainAParams = {
+  const mumbaiProvider = new ethers.providers.JsonRpcProvider(
+    getMumbaiProviderUrl(),
+  );
+  const counterPartyAWallet = new Wallet(getGoerliPrivateKey(), goerliProvider);
+  const counterPartyBWallet = new Wallet(getMumbaiPrivateKey(), mumbaiProvider);
+  const counterPartyAAddress = counterPartyAWallet.address;
+  const counterPartyBAddress = counterPartyBWallet.address;
+  const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // GOERLI FAU TOKEN
+  const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // MUMBAI TEST TOKEN
+  const sdk = new YachtLitSdk(counterPartyBWallet);
+
+  const tokenAContract = new ethers.Contract(
+    tokenAAddress,
+    TestTokenContract.abi,
+    counterPartyAWallet,
+  ) as TestToken;
+  const tokenBContract = new ethers.Contract(
+    tokenBAddress,
+    TestTokenContract.abi,
+    counterPartyBWallet,
+  ) as TestToken;
+
+  const chainAParams: LitERC20SwapParams = {
     counterPartyAddress: counterPartyAAddress,
     tokenAddress: tokenAAddress,
     chain: "goerli",
-    amount: "16",
+    amount: "10",
     decimals: 18,
   };
-  const chainBParams = {
+  const chainBParams: LitERC20SwapParams = {
     counterPartyAddress: counterPartyBAddress,
     tokenAddress: tokenBAddress,
     chain: "mumbai",
-    amount: "8",
+    amount: "10",
     decimals: 18,
   };
+
   let LitActionCode: string;
+  let ipfsCID: string;
   describe("Users meet swap conditions", () => {
-    beforeEach(async () => {
+    beforeAll(async () => {
       LitActionCode = sdk.createERC20SwapLitAction(chainAParams, chainBParams);
+      ipfsCID = await sdk.getIPFSHash(LitActionCode);
+      const pkpTokenData = await sdk.mintGrantBurnWithLitAction(ipfsCID);
+      await (
+        await tokenAContract.mint(
+          pkpTokenData.address,
+          ethers.utils.parseUnits("10", 18),
+        )
+      ).wait(2);
+      await (
+        await tokenBContract.mint(
+          pkpTokenData.address,
+          ethers.utils.parseUnits("10", 18),
+        )
+      ).wait(2);
+
       const authSig = await sdk.generateAuthSig();
-
-      // NOTE: This PKP (id: 41025662842943809580188618211850367401827873753328646565512708896476699192070)
-      // @ EVM Address: 0xc0F7c332e5c6C7C642050a0DB64898f0a3B4dD69
-      // must have 16 FAU tokens on Goerli and 8 TEST tokens on Mumbai in order for this test suite to pass
-
       response = await sdk.runLitAction({
         authSig,
-        pkpPublicKey:
-          "0x04f944cbf8a0ce169284c6954af9f5d06790c3111228432fa248f3048e2105436b1cd09a69066d57db700e8c8938ab68538223512d917dbbbe57884c2da8f308a5",
+        pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
+        chainAMaxFeePerGas: "0",
+        chainBMaxFeePerGas: "0",
       });
-    });
+    }, 100000);
 
     it("Should generate code ready to be written to IPFS", async () => {
       expect(typeof LitActionCode).to.equal("string");
@@ -58,7 +92,7 @@ describe("Lit Action Code Tests", () => {
     });
 
     it("Should sign chain B transaction when both conditions are met", async () => {
-      const chainBSignature = response.signatures.chainBSignature.signature;
+      const chainBSignature = response?.signatures?.chainBSignature?.signature;
       expect(chainBSignature).to.not.be.null;
     });
 
@@ -120,25 +154,32 @@ describe("Lit Action Code Tests", () => {
   });
 
   describe("Chain B Clawback", () => {
-    // NOTE: This PKP (id: 61307482928186888952457892953112411748413241897025503269529894097075252586127)
-    // @ Mumbai Address: 0x64026E8D5A181ADf32ce06C7805D0dD9f257E675
-    // must have 8 TEST tokens on Mumbai in order for this test suite to pass
-    beforeEach(async () => {
-      const authSig = await sdk.generateAuthSig();
+    let response: any;
+    beforeAll(async () => {
       const originTime = new Date().setDate(new Date().getDate() - 4);
       LitActionCode = sdk.createERC20SwapLitAction(
         chainAParams,
         chainBParams,
         originTime,
       );
+      const ipfsCID = await sdk.getIPFSHash(LitActionCode);
+      const pkpTokenData = await sdk.mintGrantBurnWithLitAction(ipfsCID);
+      await (
+        await tokenBContract.mint(
+          pkpTokenData.address,
+          ethers.utils.parseUnits("10", 18),
+        )
+      ).wait(2);
 
+      const authSig = await sdk.generateAuthSig();
       response = await sdk.runLitAction({
         authSig,
-        pkpPublicKey:
-          "0x0487375eeb2fb53b3a13c53be11550f880e41a7a23b20b77bd5cc96a37014ffe7755b0a84419c62e3f773843ff96cb79d28065c6dee988a051f901ab141b392b33",
+        pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
+        chainAMaxFeePerGas: "0",
+        chainBMaxFeePerGas: "0",
       });
-    });
+    }, 100000);
 
     it("Should generate a clawback transaction if swap conditions aren't met and clawback duration has elapsed", async () => {
       const chainBSignature = response.signatures.chainBSignature.signature;
@@ -160,25 +201,31 @@ describe("Lit Action Code Tests", () => {
   });
 
   describe("Chain A Clawback", () => {
-    // NOTE: This PKP (id: 18029396176372009967585463888023703874182675754300604059110822805457743134635)
-    // @ Goerli Address: 0xf13ed0909A9d09442134f7149899AAe6e460DA77
-    // must have 16 FAU tokens on Goerli in order for this test suite to pass
-    beforeEach(async () => {
-      const authSig = await sdk.generateAuthSig();
+    beforeAll(async () => {
       const originTime = new Date().setDate(new Date().getDate() - 4);
       LitActionCode = sdk.createERC20SwapLitAction(
         chainAParams,
         chainBParams,
         originTime,
       );
+      const ipfsCID = await sdk.getIPFSHash(LitActionCode);
+      const pkpTokenData = await sdk.mintGrantBurnWithLitAction(ipfsCID);
+      await (
+        await tokenAContract.mint(
+          pkpTokenData.address,
+          ethers.utils.parseUnits("10", 18),
+        )
+      ).wait(2);
 
+      const authSig = await sdk.generateAuthSig();
       response = await sdk.runLitAction({
         authSig,
-        pkpPublicKey:
-          "0x04f2d75d0bdeeb4174fb7589e1c8e4c6b5a6bb13980daff4e500058197ab42427e38aaf74d85ffbb9a5cf3b40473d53a143e86452305c5afee845c3e43e398956a",
+        pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
+        chainAMaxFeePerGas: "0",
+        chainBMaxFeePerGas: "0",
       });
-    });
+    }, 100000);
 
     it("Should generate a clawback transaction if swap conditions aren't met and clawback duration has elapsed", async () => {
       const chainASignature = response.signatures.chainASignature.signature;
