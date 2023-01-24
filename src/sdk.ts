@@ -156,9 +156,6 @@ export class YachtLitSdk {
       to: transactionParams.tokenAddress,
       nonce: transactionParams.nonce ? transactionParams.nonce : 0,
       chainId: LitChainIds[transactionParams.chain],
-      maxFeePerGas: ethers.utils.parseUnits("102", "gwei").toString(),
-      maxPriorityFeePerGas: ethers.utils.parseUnits("100", "gwei").toString(),
-      gasLimit: "1000000",
       from: transactionParams.from
         ? transactionParams.from
         : "{{pkpPublicKey}}",
@@ -358,7 +355,7 @@ export class YachtLitSdk {
             ),
           );
         }
-      
+  
         function checkHasThreeDaysPassed(previousTime) {
             const currentTime = Date.now();
             const difference = currentTime - previousTime;
