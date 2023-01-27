@@ -13,6 +13,7 @@ import {
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
 } from "../src/utils/environment";
+import { GasConfig } from "../src";
 
 const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
 describe("Mint Grant Burn Tests", () => {
@@ -38,6 +39,11 @@ describe("Mint Grant Burn Tests", () => {
     chain: "mumbai",
     amount: "10",
     decimals: 18,
+  };
+  const dummyGasConfig: GasConfig = {
+    maxFeePerGas: "0",
+    maxPriorityFeePerGas: "0",
+    gasLimit: "0",
   };
   let LitActionCode: string;
   let ipfsCID: string;
@@ -108,8 +114,8 @@ describe("Mint Grant Burn Tests", () => {
         });
       };
       go();`,
-      chainAMaxFeePerGas: "0",
-      chainBMaxFeePerGas: "0",
+      chainAGasConfig: dummyGasConfig,
+      chainBGasConfig: dummyGasConfig,
     });
     expect(response).toBeUndefined;
   });
@@ -120,8 +126,8 @@ describe("Mint Grant Burn Tests", () => {
       authSig,
       pkpPublicKey: pkpNftPublicKey,
       code: LitActionCode + randomNonce,
-      chainAMaxFeePerGas: "0",
-      chainBMaxFeePerGas: "0",
+      chainAGasConfig: dummyGasConfig,
+      chainBGasConfig: dummyGasConfig,
     });
     expect(response.response).toEqual("Conditions for swap not met!");
   }, 10000);

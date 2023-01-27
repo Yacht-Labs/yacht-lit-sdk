@@ -9,6 +9,7 @@ import {
 } from "../src/utils/environment";
 import TestTokenContract from "../src/abis/TestToken.json";
 import { TestToken } from "../typechain-types/contracts/TestToken";
+import { GasConfig } from "../src";
 
 describe("Lit Action Code Tests", () => {
   let response: any;
@@ -52,6 +53,12 @@ describe("Lit Action Code Tests", () => {
     decimals: 18,
   };
 
+  const dummyGasConfig: GasConfig = {
+    maxFeePerGas: "0",
+    maxPriorityFeePerGas: "0",
+    gasLimit: "0",
+  };
+
   let LitActionCode: string;
   let ipfsCID: string;
   describe("Users meet swap conditions", () => {
@@ -77,8 +84,8 @@ describe("Lit Action Code Tests", () => {
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
-        chainAMaxFeePerGas: "0",
-        chainBMaxFeePerGas: "0",
+        chainAGasConfig: dummyGasConfig,
+        chainBGasConfig: dummyGasConfig,
       });
     }, 100000);
 
@@ -176,8 +183,8 @@ describe("Lit Action Code Tests", () => {
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
-        chainAMaxFeePerGas: "0",
-        chainBMaxFeePerGas: "0",
+        chainAGasConfig: dummyGasConfig,
+        chainBGasConfig: dummyGasConfig,
       });
     }, 100000);
 
@@ -222,8 +229,8 @@ describe("Lit Action Code Tests", () => {
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
-        chainAMaxFeePerGas: "0",
-        chainBMaxFeePerGas: "0",
+        chainAGasConfig: dummyGasConfig,
+        chainBGasConfig: dummyGasConfig,
       });
     }, 100000);
 

@@ -1,5 +1,6 @@
 import { UnsignedTransaction } from "ethers";
 import { LitAuthSig } from "./../utils/lit";
+import { BigNumber } from "ethers";
 
 export type LitSignature = {
   r: string;
@@ -8,6 +9,12 @@ export type LitSignature = {
   signature: string;
   publicKey: string;
   dataSigned: string;
+};
+
+export type GasConfig = {
+  maxFeePerGas: BigNumber | string;
+  maxPriorityFeePerGas: BigNumber | string;
+  gasLimit: BigNumber | string;
 };
 
 export type LitERC20SwapCondition = {

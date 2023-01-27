@@ -18,6 +18,7 @@ import {
   LitChainIds,
   LitUnsignedTransaction,
   LitERC20SwapParams,
+  GasConfig,
 } from "./@types/yacht-lit-sdk";
 import { create, IPFS } from "ipfs-core";
 import Hash from "ipfs-only-hash";
@@ -156,7 +157,7 @@ export class YachtLitSdk {
       to: transactionParams.tokenAddress,
       nonce: transactionParams.nonce ? transactionParams.nonce : 0,
       chainId: LitChainIds[transactionParams.chain],
-      gasLimit: "1000000",
+      gasLimit: "50000",
       from: transactionParams.from
         ? transactionParams.from
         : "{{pkpPublicKey}}",
@@ -269,15 +270,15 @@ export class YachtLitSdk {
     ipfsCID,
     code,
     authSig,
-    chainAMaxFeePerGas,
-    chainBMaxFeePerGas,
+    chainAGasConfig,
+    chainBGasConfig,
   }: {
     pkpPublicKey: string;
     ipfsCID?: string;
     code?: string;
     authSig?: any;
-    chainAMaxFeePerGas: string;
-    chainBMaxFeePerGas: string;
+    chainAGasConfig: GasConfig;
+    chainBGasConfig: GasConfig;
   }) {
     try {
       await this.connect();
@@ -289,8 +290,8 @@ export class YachtLitSdk {
           pkpAddress: ethers.utils.computeAddress(pkpPublicKey),
           pkpPublicKey: pkpPublicKey,
           authSig: authSig ? authSig : await this.generateAuthSig(),
-          chainAMaxFeePerGas,
-          chainBMaxFeePerGas,
+          chainAGasConfig,
+          chainBGasConfig,
         },
       });
       return response;
@@ -341,12 +342,12 @@ export class YachtLitSdk {
     )} : Date.now();
         const chainACondition = ${JSON.stringify(chainACondition)}
         const chainBCondition = ${JSON.stringify(chainBCondition)}
-        const chainATransaction = ${JSON.stringify(chainATransaction)}
-        const chainBTransaction = ${JSON.stringify(chainBTransaction)}
-        const chainAClawbackTransaction = ${JSON.stringify(
+        let chainATransaction = ${JSON.stringify(chainATransaction)}
+        let chainBTransaction = ${JSON.stringify(chainBTransaction)}
+        let chainAClawbackTransaction = ${JSON.stringify(
           chainAClawbackTransaction,
         )}
-        const chainBClawbackTransaction = ${JSON.stringify(
+        let chainBClawbackTransaction = ${JSON.stringify(
           chainBClawbackTransaction,
         )}
         const hashTransaction = (tx) => {
@@ -384,10 +385,10 @@ export class YachtLitSdk {
         ];
         chainATransaction.from = chainBTransaction.from = pkpAddress;
 
-        chainATransaction.maxFeePerGas = chainAMaxFeePerGas;
-        chainBTransaction.maxFeePerGas = chainBMaxFeePerGas;
-        chainAClawbackTransaction.maxFeePerGas = chainAMaxFeePerGas;
-        chainBClawbackTransaction.maxFeePerGas = chainBMaxFeePerGas;
+        chainATransaction = {...chainATransaction, ...chainAGasConfig}
+        chainBTransaction = {...chainBTransaction, ...chainBGasConfig}
+        chainAClawbackTransaction = {...chainAClawbackTransaction, ...chainAGasConfig}
+        chainBClawbackTransaction = {...chainBClawbackTransaction, ...chainBGasConfig}
         
         const chainAConditionsPass = await Lit.Actions.checkConditions({
           conditions: [chainACondition],
