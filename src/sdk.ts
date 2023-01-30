@@ -414,13 +414,11 @@ export class YachtLitSdk {
         console.log({chainBNonce});
 
         if (chainAConditionsPass) {
-          console.log("Chain A Conditions Pass");
           if (chainBNonce === "0x1") {
             await generateSwapTransactions();
             return;
           }
           if (!threeDaysHasPassed) {
-            console.log("Nonce not 1 and three days hasnt passed");
             Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
             return;
           }
@@ -439,12 +437,10 @@ export class YachtLitSdk {
       
         if (chainBConditionsPass) {
           if (chainANonce === "0x1") {
-          console.log("Chain B Conditions Pass");
             await generateSwapTransactions();
             return;
           }
           if (!threeDaysHasPassed) {
-            console.log("Nonce not 1 and three days hasnt passed");
             Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
             return;
           }
