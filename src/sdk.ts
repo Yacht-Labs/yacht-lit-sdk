@@ -410,8 +410,6 @@ export class YachtLitSdk {
         const threeDaysHasPassed = checkHasThreeDaysPassed(originTime);
         const chainANonce = await Lit.Actions.getLatestNonce({address: pkpAddress, chain: chainACondition.chain});
         const chainBNonce = await Lit.Actions.getLatestNonce({address: pkpAddress, chain: chainBCondition.chain});
-        console.log({chainANonce});
-        console.log({chainBNonce});
 
         if (chainAConditionsPass) {
           if (chainBNonce === "0x1") {
