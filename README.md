@@ -1,5 +1,7 @@
 This is the Yacht-Lit-SDK which facilitates cross chain atomic swaps using Lit Protocol [Programmable Key Pairs](https://developer.litprotocol.com/coreConcepts/LitActionsAndPKPs/PKPs) (PKPs) and [Lit Actions](https://developer.litprotocol.com/coreConcepts/LitActionsAndPKPs/litActions).
 
+Check out our [gitbook documentation](https://hank-minden.gitbook.io/yacht-lit-sdk-developer-docs/implementation) for more in-depth descriptions of implementation details
+
 Programmable Key Pairs are valid ECDSA wallets with a private key and a public key and can be used for signing transactions on-chain. The private key is generated collectively by the Lit Protocol nodes through a process called Distributed Key Generation (DKG). Each node in the Lit network has a share of the private key, and no party involved in the DKG process ever has the whole key. The ownership of the PKP is currently managed by an NFT on the Polygon Mumbai network: whatever wallet owns the NFT is able to ask the Lit Network to combine the key shares and sign any transaction or message.
 
 Lit Actions are JavaScript functions that can use PKPs to sign transactions. They are akin to Javascript smart contracts that can work cross chain because they are able to sign messages using the PKP on any chain that Lit Protocol has been set up for. Lit Actions can read on-chain data take action based on the state of the network.
