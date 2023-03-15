@@ -1,6 +1,6 @@
 import { getBytesFromMultihash } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
@@ -20,14 +20,12 @@ import {
   LitERC20SwapParams,
   GasConfig,
 } from "./@types/yacht-lit-sdk";
-import { create, IPFS } from "ipfs-core";
 import Hash from "ipfs-only-hash";
 
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
   private signer: ethers.Signer;
   private litClient: any;
-  private ipfs: IPFS | undefined = undefined;
   /**
    * @constructor
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
@@ -57,12 +55,6 @@ export class YachtLitSdk {
     }
   }
 
-  private async mintPKP() {
-    if (!this.signer.provider) {
-      throw new Error("No provider attached to ethers Yacht-Lit-SDK signer");
-    }
-    return await this.pkpContract.mintNext(2, { value: 1e14 });
-  }
   /**
    * Generates the Lit Action code that will be uploaded to IPFS and manages the logic for the cross chain atomic swap
    * @param {LitERC20SwapParams} chainAParams - Parameters for the swap on Chain A
@@ -140,7 +132,7 @@ export class YachtLitSdk {
   }
 
   /**
-   * Utility function for generating an unsigned ERC20 transaction. Used for testing
+   * Utility function for generating an unsigned ERC20 transaction.
    * @param transactionParams
    * @returns
    */
@@ -177,12 +169,25 @@ export class YachtLitSdk {
    * @returns {string} The IPFS CID to locate your record
    */
   async uploadToIPFS(code: string): Promise<string> {
-    const { path } = await uploadToIPFS(code);
-    return path;
+    try {
+      const { path } = await uploadToIPFS(code);
+      return path;
+    } catch (err) {
+      throw new Error(`Error uploading to IPFS: ${err}`);
+    }
   }
 
+  /**
+   *
+   * @param code - The Lit Action code to be hashed
+   * @returns The IPFS CID
+   */
   async getIPFSHash(code: string): Promise<string> {
-    return await Hash.of(code);
+    try {
+      return await Hash.of(code);
+    } catch (err) {
+      throw new Error(`Error hashing Lit Action code: ${err}`);
+    }
   }
 
   /**
@@ -410,8 +415,6 @@ export class YachtLitSdk {
         const threeDaysHasPassed = checkHasThreeDaysPassed(originTime);
         const chainANonce = await Lit.Actions.getLatestNonce({address: pkpAddress, chain: chainACondition.chain});
         const chainBNonce = await Lit.Actions.getLatestNonce({address: pkpAddress, chain: chainBCondition.chain});
-        console.log({chainANonce});
-        console.log({chainBNonce});
 
         if (chainAConditionsPass) {
           if (chainBNonce === "0x1") {
