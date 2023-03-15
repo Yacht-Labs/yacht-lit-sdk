@@ -21,11 +21,15 @@ import {
   GasConfig,
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
+import * as bitcoin from "bitcoinjs-lib";
+import * as ecc from "tiny-secp256k1";
 
+("043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
   private signer: ethers.Signer;
   private litClient: any;
+  private btcTestNet: boolean;
   /**
    * @constructor
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
@@ -34,6 +38,7 @@ export class YachtLitSdk {
   constructor(
     signer?: ethers.Signer,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
+    btcTestNet = false,
   ) {
     this.signer = signer ? signer : ethers.Wallet.createRandom();
     this.litClient = new LitJsSdk.LitNodeClient({
@@ -45,6 +50,40 @@ export class YachtLitSdk {
       pkpNftContract.abi,
       this.signer,
     ) as PKPNFT;
+    this.btcTestNet = btcTestNet;
+  }
+
+  ethPubKeyToBtcAddress(ethKey: string): string {
+    let compressedPoint: Uint8Array;
+    if (ethKey.length === 130) {
+      compressedPoint = ecc.pointCompress(Buffer.from(ethKey, "hex"), true);
+    } else if (ethKey.length === 132) {
+      if (ethKey.slice(0, 2) !== "0x") {
+        throw new Error("Invalid Ethereum public key");
+      }
+      compressedPoint = ecc.pointCompress(
+        Buffer.from(ethKey.slice(2), "hex"),
+        true,
+      );
+    } else if (ethKey.length === 66) {
+      compressedPoint = Buffer.from(ethKey, "hex");
+    } else if (ethKey.length === 68) {
+      if (ethKey.slice(0, 2) !== "0x") {
+        throw new Error("Invalid Ethereum public key");
+      }
+      compressedPoint = Buffer.from(ethKey.slice(2), "hex");
+    } else {
+      throw new Error("Invalid Ethereum public key");
+    }
+
+    const { address } = bitcoin.payments.p2pkh({
+      pubkey: Buffer.from(compressedPoint),
+      network: this.btcTestNet
+        ? bitcoin.networks.testnet
+        : bitcoin.networks.bitcoin,
+    });
+    if (!address) throw new Error("Could not generate address");
+    return address;
   }
 
   private async connect() {
