@@ -37,7 +37,10 @@ describe("Yacht-Lit SDK ERC20 Transaction Tests", () => {
         from: owner.address,
         nonce: await owner.getTransactionCount(),
       }) as Deferrable<TransactionRequest>;
-      await owner.sendTransaction(unsignedTransaction);
+      await owner.sendTransaction({
+        ...unsignedTransaction,
+        gasLimit: 1000000,
+      });
       const counterPartyBalance = await deployedYachtToken.balanceOf(
         addrs[0].address,
       );
