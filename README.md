@@ -15,6 +15,8 @@ To compile and run tests locally:
 
 IMPORTANT NOTE: Some tests consume TEST MATIC and Goerli ETH. To ensure the tests pass, copy the .env.sample file into a .env file, and add a MATIC private key and a Goerli private key each with some native tokens. You will also need an RPC url for both MATIC You can find a faucet at https://goerlifaucet.com/ and https://mumbaifaucet.com/
 
+To ensure that bitcoin tests pass, enter your MUMBAI private key in the .env file as noted above, and before running any tests run `yarn run getBtcAddress`. After this, put the bitcoin testnet address in your .env file under BITCOIN_TESTNET_ADDRESS.
+
 Please note that since the tests are running on-chain it can take some time
 
 ```

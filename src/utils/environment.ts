@@ -25,3 +25,7 @@ export const getGoerliProviderUrl = (): string => {
 export const getMumbaiProviderUrl = (): string => {
   return readEnv("MUMBAI_PROVIDER_URL");
 };
+
+export const getBitcoinAddress = (): string => {
+  return readEnv("BITCOIN_TESTNET_ADDRESS");
+};
