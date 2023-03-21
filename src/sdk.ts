@@ -122,17 +122,23 @@ export class YachtLitSdk {
    */
   async getUtxoByAddress(address: string): Promise<UTXO> {
     try {
-      const result = await fetch(
-        `${this.btcApiEndpoint}/${
-          this.btcTestNet ? "testnet/" : null
-        }api/address/${address}/utxo`,
-      );
-      if (!result.ok) throw new Error("Could not get utxos");
+      const endpoint = `${this.btcApiEndpoint}/${
+        this.btcTestNet ? "testnet/" : null
+      }api/address/${address}/utxo`;
+      const result = await fetch(endpoint);
+      if (!result.ok)
+        throw new Error(
+          `Could not get utxos from endpoint ${endpoint}
+          ${result.statusText}`,
+        );
       const utxos = await result.json();
       const firstUtxo = utxos[0];
+      if (!firstUtxo) {
+        throw new Error("No utxos found for address");
+      }
       return firstUtxo as UTXO;
     } catch (err) {
-      throw new Error("Could not get utxos");
+      throw new Error("Error fetching utxos: " + err);
     }
   }
 
@@ -191,7 +197,6 @@ export class YachtLitSdk {
       },
       authSig,
     })) as any;
-    console.log({ result });
     const { sig1 } = result.signatures;
     return sig1;
   }
@@ -276,16 +281,16 @@ export class YachtLitSdk {
    * })
    * const response = await sdk.broadcastBtcTransaction(signedTransaction)
    */
-  public broadcastBtcTransaction(transaction: bitcoin.Transaction) {
+  async broadcastBtcTransaction(transaction: bitcoin.Transaction) {
     const txHex = transaction.toHex();
-    console.log({ txHex });
-    return fetch(
+    const response = await fetch(
       `${this.btcApiEndpoint}/${this.btcTestNet ? "testnet/" : null}api/tx`,
       {
         method: "POST",
         body: txHex,
       },
     );
+    return response.json();
   }
 
   private async connect() {
@@ -431,10 +436,13 @@ export class YachtLitSdk {
     }
   }
 
-  // TODO: Add test for mintPKP
   /**
-   * Mints a PKP NFT on the Polygon Mumbai network
-   * @returns The transaction object
+   * Mints a PKP NFT on the Polygon Mumbai network using the provided signer
+   * @returns {Promise<{tokenId: string; publicKey: string; address: string}>} tokenId, publicKey, and address of the minted NFT
+   * @throws Error if signer not set
+   * @throws Error if signer provider not set
+   * @example
+   * const { tokenId, publicKey, address } = await litClient.mintPkp();
    */
   async mintPkp(): Promise<{
     tokenId: string;

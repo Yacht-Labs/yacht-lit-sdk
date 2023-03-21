@@ -6,8 +6,6 @@ import {
 import { Wallet, providers } from "ethers";
 import { YachtLitSdk } from "../src/sdk";
 import { UTXO } from "../src/@types/yacht-lit-sdk";
-import * as bitcoin from "bitcoinjs-lib";
-import { toOutputScript } from "bitcoinjs-lib/src/address";
 
 const wallet = new Wallet(
   getMumbaiPrivateKey(),
@@ -27,22 +25,59 @@ const stubUTXO: UTXO = {
   },
   value: 9328,
 };
+const mockFetch = jest.fn().mockReturnValue({
+  ok: true,
+  json: () => {
+    return [stubUTXO];
+  },
+});
 jest.mock("node-fetch", () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      ok: true,
-      json: () => {
-        return [stubUTXO];
-      },
-    };
-  });
+  return jest.fn().mockImplementation(() => mockFetch());
 });
 
 describe("Bitcoin UTXOs", () => {
   const FEE = 25;
   const recipientAddress = "mqnvzsHWFNZv5TYVMaSQ4yCfyCVgo3Bgch";
 
-  it("Should properly sign a transaction with public key", async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetch.mockReturnValue({
+      ok: true,
+      json: () => {
+        return [stubUTXO];
+      },
+    });
+  });
+  it("Should properly fetch UTXOs", async () => {
+    const utxo = await sdk.getUtxoByAddress(getMumbaiPkpPublicKey());
+    expect(utxo).toEqual(stubUTXO);
+  });
+
+  it("Should properly error on API error", async () => {
+    mockFetch.mockReturnValue({
+      ok: false,
+      json: () => {
+        return { error: "error" };
+      },
+    });
+    expect(async () => {
+      await sdk.getUtxoByAddress(getMumbaiPkpPublicKey());
+    }).rejects.toThrow();
+  });
+
+  it("Should properly error if no UTXOs are found", async () => {
+    mockFetch.mockReturnValue({
+      ok: true,
+      json: () => {
+        return [];
+      },
+    });
+    expect(async () => {
+      await sdk.getUtxoByAddress(getMumbaiPkpPublicKey());
+    }).rejects.toThrow();
+  });
+
+  it("Should validate that a transaction was signed with the proper public key", async () => {
     expect(async () => {
       await sdk.signFirstBtcUtxo({
         pkpPublicKey: getMumbaiPkpPublicKey(),
@@ -52,20 +87,13 @@ describe("Bitcoin UTXOs", () => {
     }).not.toThrow();
   });
 
-  xit("should do other stuff, too", async () => {
-    const transaction = await sdk.signFirstBtcUtxo({
-      pkpPublicKey: getMumbaiPkpPublicKey(),
-      fee: FEE,
-      recipientAddress: recipientAddress,
-    });
-    const hashForSig = transaction.hashForSignature(
-      0,
-      toOutputScript(
-        sdk.getPkpBtcAddress(getMumbaiPkpPublicKey()),
-        bitcoin.networks.testnet,
-      ),
-      bitcoin.Transaction.SIGHASH_ALL,
-    );
-    console.dir(transaction);
+  it("Should error if the transaction was not signed with the proper public key", async () => {
+    expect(async () => {
+      await sdk.signFirstBtcUtxo({
+        pkpPublicKey: "wrong",
+        fee: FEE,
+        recipientAddress: recipientAddress,
+      });
+    }).rejects.toThrow();
   });
 });
