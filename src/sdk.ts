@@ -5,7 +5,6 @@ import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig, reverseBuffer, validator } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
 import { uploadToIPFS } from "./utils/ipfs";
-import ECPairFactory from "ecpair";
 import {
   arrayify,
   keccak256,
@@ -39,7 +38,20 @@ export class YachtLitSdk {
   /**
    * @constructor
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
-   * @param {ethers.Signer} signer - The wallet that will be used to mint a PKP
+   * @param signer - The wallet that will be used to mint a PKP and generate auth sigs
+   * @param pkpContractAddress - The address of the PKP NFT contract - defaults to the Mumbai testnet address
+   * @param btcTestNet - Whether or not to use the Bitcoin testnet - defaults to false
+   * @param btcApiEndpoint - The endpoint to use for the Bitcoin API - defaults to blockstream.info
+   * @example
+   * import { YachtLitSdk } from "yacht-lit-sdk";
+   * import { Wallet, providers } from "ethers";
+   *
+   * const wallet = new Wallet(
+   *   YOUR_PRIVATE_KEY,
+   *   new providers.JsonRpcProvider(YOUR_MUMBAI_PROVIDER_URL),
+   * );
+   * const sdk = new YachtLitSdk({ signer: wallet });
+   *
    */
   constructor({
     signer,
@@ -67,7 +79,6 @@ export class YachtLitSdk {
    * @returns {string} Bitcoin address
    * @example
    * const btcAddress = ethPubKeyToBtcAddress("0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
-   * console.log(btcAddress); // 1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T
    */
   getPkpBtcAddress(ethKey: string): string {
     let compressedPoint: Uint8Array;
@@ -102,6 +113,13 @@ export class YachtLitSdk {
     return address;
   }
 
+  /**
+   * Gets first unspent bitcoin UTXO for an address
+   * @param {string} address - Bitcoin address
+   * @returns {UTXO} UTXO
+   * @example
+   * const utxo = await getUtxoByAddress("1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T");
+   */
   async getUtxoByAddress(address: string): Promise<UTXO> {
     try {
       const result = await fetch(
@@ -142,7 +160,10 @@ export class YachtLitSdk {
     return transaction;
   }
 
-  private async signWithLitAction(hashForSig: Buffer, pkpPublicKey: string) {
+  private async signBitcoinWithLitAction(
+    hashForSig: Buffer,
+    pkpPublicKey: string,
+  ) {
     const litActionCode = `
     const go = async () => {
       // this requests a signature share from the Lit Node
@@ -175,7 +196,19 @@ export class YachtLitSdk {
     return sig1;
   }
 
-  // Fee is in sat/vbyte
+  /**
+   * Signs first UTXO for a PKP address
+   * @param {string} pkpPublicKey - PKP public key
+   * @param {number} fee - Fee per vbyte
+   * @param {string} recipientAddress - Bitcoin address to send to
+   * @returns {bitcoin.Transaction} Signed transaction
+   * @example
+   * const signedTransaction = sdk.signFirstBtcUtxo({
+   *   pkpPublicKey: "0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a",
+   *   fee: 24,
+   *   recipientAddress: "1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T",
+   * })
+   */
   async signFirstBtcUtxo({
     pkpPublicKey,
     fee,
@@ -184,7 +217,7 @@ export class YachtLitSdk {
     pkpPublicKey: string;
     fee: number;
     recipientAddress: string;
-  }) {
+  }): Promise<bitcoin.Transaction> {
     const compressedPoint = ecc.pointCompress(
       Buffer.from(pkpPublicKey.replace("0x", ""), "hex"),
       true,
@@ -207,7 +240,10 @@ export class YachtLitSdk {
       bitcoin.Transaction.SIGHASH_ALL,
     );
 
-    const litSignature = await this.signWithLitAction(hashForSig, pkpPublicKey);
+    const litSignature = await this.signBitcoinWithLitAction(
+      hashForSig,
+      pkpPublicKey,
+    );
     const signature = Buffer.from(litSignature.r + litSignature.s, "hex");
 
     const validSignature = validator(
@@ -228,6 +264,18 @@ export class YachtLitSdk {
     return transaction;
   }
 
+  /**
+   * Broadcasts a signed transaction to the Bitcoin network
+   * @param {bitcoin.Transaction} transaction - Signed transaction
+   * @returns {Promise<Response>} Response from the Bitcoin API
+   * @example
+   * const signedTransaction = sdk.signFirstBtcUtxo({
+   *  pkpPublicKey: "0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a",
+   *  fee: 24,
+   *  recipientAddress: "1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T",
+   * })
+   * const response = await sdk.broadcastBtcTransaction(signedTransaction)
+   */
   public broadcastBtcTransaction(transaction: bitcoin.Transaction) {
     const txHex = transaction.toHex();
     console.log({ txHex });
