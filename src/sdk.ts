@@ -1,10 +1,11 @@
 import { getBytesFromMultihash } from "./utils/lit";
-import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
+import { PKP_CONTRACT_ADDRESS_MUMBAI, VBYTES_PER_TX } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
-import { generateAuthSig, reverseBuffer } from "./utils";
+import { generateAuthSig, reverseBuffer, validator } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
 import { uploadToIPFS } from "./utils/ipfs";
+import ECPairFactory from "ecpair";
 import {
   arrayify,
   keccak256,
@@ -33,6 +34,7 @@ export class YachtLitSdk {
   private signer: ethers.Wallet;
   private litClient: any;
   private btcTestNet: boolean;
+  private btcApiEndpoint: string;
 
   /**
    * @constructor
@@ -43,7 +45,7 @@ export class YachtLitSdk {
     signer,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
     btcTestNet = false,
-    btcApiEndpoint,
+    btcApiEndpoint = "https://blockstream.info",
   }: LitYachtSdkParams) {
     this.signer = signer ? signer : ethers.Wallet.createRandom();
     this.litClient = new LitJsSdk.LitNodeClient({
@@ -56,6 +58,7 @@ export class YachtLitSdk {
       this.signer,
     ) as PKPNFT;
     this.btcTestNet = btcTestNet;
+    this.btcApiEndpoint = btcApiEndpoint;
   }
 
   /**
@@ -66,7 +69,7 @@ export class YachtLitSdk {
    * const btcAddress = ethPubKeyToBtcAddress("0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
    * console.log(btcAddress); // 1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T
    */
-  ethPubKeyToBtcAddress(ethKey: string): string {
+  getPkpBtcAddress(ethKey: string): string {
     let compressedPoint: Uint8Array;
     if (ethKey.length === 130) {
       compressedPoint = ecc.pointCompress(Buffer.from(ethKey, "hex"), true);
@@ -99,31 +102,30 @@ export class YachtLitSdk {
     return address;
   }
 
-  async getUtxosByAddress(address: string): Promise<UTXO[]> {
+  async getUtxoByAddress(address: string): Promise<UTXO> {
     try {
       const result = await fetch(
-        `https://blockstream.info/${
+        `${this.btcApiEndpoint}/${
           this.btcTestNet ? "testnet/" : null
         }api/address/${address}/utxo`,
       );
       if (!result.ok) throw new Error("Could not get utxos");
       const utxos = await result.json();
-      return utxos as UTXO[];
+      const firstUtxo = utxos[0];
+      return firstUtxo as UTXO;
     } catch (err) {
       throw new Error("Could not get utxos");
     }
   }
 
-  prepareUtxoForSignature({
+  private prepareTransactionForSignature({
     utxo,
     recipientAddress,
     fee,
-    changeAddress,
   }: {
     utxo: UTXO;
     recipientAddress: string;
     fee: number;
-    changeAddress: string;
   }): bitcoin.Transaction {
     const transaction = new bitcoin.Transaction();
     transaction.addInput(
@@ -135,45 +137,26 @@ export class YachtLitSdk {
       recipientAddress,
       this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
     );
-    transaction.addOutput(outputScript, utxo.value - fee);
+    transaction.addOutput(outputScript, utxo.value - VBYTES_PER_TX * fee);
 
     return transaction;
   }
 
-  async signBitcoinTransaction(
-    transaction: bitcoin.Transaction,
-    pkpPublicKey: string,
-  ) {
-    const PKP_COMPRESSED_PUBLIC_KEY_ARR = ecc.pointCompress(
-      Buffer.from(pkpPublicKey, "hex"),
-      true,
-    );
-    const PKP_COMPRESSED_PUBLIC_KEY = Buffer.from(
-      PKP_COMPRESSED_PUBLIC_KEY_ARR,
-    ).toString("hex");
+  private async signWithLitAction(hashForSig: Buffer, pkpPublicKey: string) {
     const litActionCode = `
-      const go = async () => {
-        // this requests a signature share from the Lit Node
-        // the signature share will be automatically returned in the HTTP response from the node
-        // all the params (toSign, publicKey, sigName) are passed in from the LitJsSdk.executeJs() function
-        try {
-        const sigShare = await LitActions.signEcdsa({toSign: message, publicKey, sigName});
-        } catch (e) {
-          // console.log("error: ", e);
-        }
-      };
+    const go = async () => {
+      // this requests a signature share from the Lit Node
+      // the signature share will be automatically returned in the HTTP response from the node
+      // all the params (toSign, publicKey, sigName) are passed in from the LitJsSdk.executeJs() function
+      try {
+      const sigShare = await LitActions.signEcdsa({toSign: message, publicKey, sigName});
+      } catch (e) {
+        // console.log("error: ", e);
+      }
+    };
 
-      go();
-`;
-    const hashForSig = transaction.hashForSignature(
-      0,
-      toOutputScript(
-        this.ethPubKeyToBtcAddress(pkpPublicKey),
-        this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
-      ),
-      bitcoin.Transaction.SIGHASH_ALL,
-    );
-
+    go();
+  `;
     const authSig = await this.generateAuthSig();
     await this.connect();
 
@@ -187,20 +170,74 @@ export class YachtLitSdk {
       },
       authSig,
     })) as any;
-
+    console.log({ result });
     const { sig1 } = result.signatures;
-    const signature = Buffer.from(sig1.r + sig1.s, "hex");
+    return sig1;
+  }
 
+  // Fee is in sat/vbyte
+  async signFirstBtcUtxo({
+    pkpPublicKey,
+    fee,
+    recipientAddress,
+  }: {
+    pkpPublicKey: string;
+    fee: number;
+    recipientAddress: string;
+  }) {
+    const compressedPoint = ecc.pointCompress(
+      Buffer.from(pkpPublicKey.replace("0x", ""), "hex"),
+      true,
+    );
+
+    const pkpBtcAddress = this.getPkpBtcAddress(pkpPublicKey);
+    const utxo = await this.getUtxoByAddress(pkpBtcAddress);
+    const transaction = this.prepareTransactionForSignature({
+      utxo,
+      recipientAddress,
+      fee,
+    });
+
+    const hashForSig = transaction.hashForSignature(
+      0,
+      toOutputScript(
+        pkpBtcAddress,
+        this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+      ),
+      bitcoin.Transaction.SIGHASH_ALL,
+    );
+
+    const litSignature = await this.signWithLitAction(hashForSig, pkpPublicKey);
+    const signature = Buffer.from(litSignature.r + litSignature.s, "hex");
+
+    const validSignature = validator(
+      Buffer.from(compressedPoint),
+      hashForSig,
+      signature,
+    );
+    if (!validSignature) throw new Error("Invalid signature");
     const compiledSignature = bitcoin.script.compile([
       bitcoin.script.signature.encode(
         signature,
         bitcoin.Transaction.SIGHASH_ALL,
       ),
-      Buffer.from(PKP_COMPRESSED_PUBLIC_KEY, "hex"),
+      Buffer.from(compressedPoint.buffer),
     ]);
 
     transaction.setInputScript(0, compiledSignature);
     return transaction;
+  }
+
+  public broadcastBtcTransaction(transaction: bitcoin.Transaction) {
+    const txHex = transaction.toHex();
+    console.log({ txHex });
+    return fetch(
+      `${this.btcApiEndpoint}/${this.btcTestNet ? "testnet/" : null}api/tx`,
+      {
+        method: "POST",
+        body: txHex,
+      },
+    );
   }
 
   private async connect() {
@@ -347,7 +384,6 @@ export class YachtLitSdk {
   }
 
   // TODO: Add test for mintPKP
-  // create jsdoc for mintPkp function
   /**
    * Mints a PKP NFT on the Polygon Mumbai network
    * @returns The transaction object
@@ -359,6 +395,9 @@ export class YachtLitSdk {
   }> {
     if (!this.signer) {
       throw new Error("Signer not set");
+    }
+    if (!this.signer.provider) {
+      throw new Error("Signer provider not set, required to get gas info");
     }
     try {
       const feeData = await this.signer.provider.getFeeData();

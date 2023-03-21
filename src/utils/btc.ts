@@ -1,3 +1,7 @@
+import ECPairFactory from "ecpair";
+import * as ecc from "tiny-secp256k1";
+
+const ECPair = ECPairFactory(ecc);
 export function reverseBuffer(buffer: Buffer): Buffer {
   if (buffer.length < 1) return buffer;
   let j = buffer.length - 1;
@@ -10,3 +14,9 @@ export function reverseBuffer(buffer: Buffer): Buffer {
   }
   return buffer;
 }
+
+export const validator = (
+  pubkey: Buffer,
+  msghash: Buffer,
+  signature: Buffer,
+): boolean => ECPair.fromPublicKey(pubkey).verify(msghash, signature);

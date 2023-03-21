@@ -14,6 +14,11 @@ export const getMumbaiPrivateKey = (): string => {
   return readEnv("MUMBAI_PRIVATE_KEY");
 };
 
+// get mumbai pkp
+export const getMumbaiPkpPublicKey = (): string => {
+  return readEnv("MUMBAI_PKP_PUBLIC_KEY");
+};
+
 export const getGoerliPrivateKey = (): string => {
   return readEnv("GOERLI_PRIVATE_KEY");
 };
