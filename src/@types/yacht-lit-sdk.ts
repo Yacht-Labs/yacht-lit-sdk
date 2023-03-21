@@ -167,3 +167,15 @@ export enum CHAIN_NAME {
 }
 
 export type LitUnsignedTransaction = UnsignedTransaction & { from: string };
+
+export interface UTXO {
+  txid: string;
+  vout: number;
+  status: {
+    confirmed: boolean;
+    block_height: number;
+    block_hash: string;
+    block_time: number;
+  };
+  value: number;
+}

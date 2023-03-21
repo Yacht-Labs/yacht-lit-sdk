@@ -2,7 +2,7 @@ import { getBytesFromMultihash } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_MUMBAI } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
-import { generateAuthSig } from "./utils";
+import { generateAuthSig, reverseBuffer } from "./utils";
 import LitJsSdk from "@lit-protocol/sdk-nodejs";
 import { uploadToIPFS } from "./utils/ipfs";
 import {
@@ -19,24 +19,27 @@ import {
   LitUnsignedTransaction,
   LitERC20SwapParams,
   GasConfig,
+  UTXO,
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
+import fetch from "node-fetch";
+import { toOutputScript } from "bitcoinjs-lib/src/address";
 
-("043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
-  private signer: ethers.Signer;
+  private signer: ethers.Wallet;
   private litClient: any;
   private btcTestNet: boolean;
+
   /**
    * @constructor
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
    * @param {ethers.Signer} signer - The wallet that will be used to mint a PKP
    */
   constructor(
-    signer?: ethers.Signer,
+    signer?: ethers.Wallet,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
     btcTestNet = false,
   ) {
@@ -53,6 +56,14 @@ export class YachtLitSdk {
     this.btcTestNet = btcTestNet;
   }
 
+  /**
+   * Converts an Ethereum public key to a Bitcoin address
+   * @param {string} ethKey - Ethereum public key (compressed or uncompressed)
+   * @returns {string} Bitcoin address
+   * @example
+   * const btcAddress = ethPubKeyToBtcAddress("0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
+   * console.log(btcAddress); // 1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T
+   */
   ethPubKeyToBtcAddress(ethKey: string): string {
     let compressedPoint: Uint8Array;
     if (ethKey.length === 130) {
@@ -84,6 +95,110 @@ export class YachtLitSdk {
     });
     if (!address) throw new Error("Could not generate address");
     return address;
+  }
+
+  async getUtxosByAddress(address: string): Promise<UTXO[]> {
+    try {
+      const result = await fetch(
+        `https://blockstream.info/${
+          this.btcTestNet ? "testnet/" : null
+        }api/address/${address}/utxo`,
+      );
+      if (!result.ok) throw new Error("Could not get utxos");
+      const utxos = await result.json();
+      return utxos as UTXO[];
+    } catch (err) {
+      throw new Error("Could not get utxos");
+    }
+  }
+
+  prepareUtxoForSignature({
+    utxo,
+    recipientAddress,
+    fee,
+    changeAddress,
+  }: {
+    utxo: UTXO;
+    recipientAddress: string;
+    fee: number;
+    changeAddress: string;
+  }): bitcoin.Transaction {
+    const transaction = new bitcoin.Transaction();
+    transaction.addInput(
+      reverseBuffer(Buffer.from(utxo.txid, "hex")),
+      utxo.vout,
+    );
+
+    const outputScript = toOutputScript(
+      recipientAddress,
+      this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+    );
+    transaction.addOutput(outputScript, utxo.value - fee);
+
+    return transaction;
+  }
+
+  async signBitcoinTransaction(
+    transaction: bitcoin.Transaction,
+    pkpPublicKey: string,
+  ) {
+    const PKP_COMPRESSED_PUBLIC_KEY_ARR = ecc.pointCompress(
+      Buffer.from(pkpPublicKey, "hex"),
+      true,
+    );
+    const PKP_COMPRESSED_PUBLIC_KEY = Buffer.from(
+      PKP_COMPRESSED_PUBLIC_KEY_ARR,
+    ).toString("hex");
+    const litActionCode = `
+      const go = async () => {
+        // this requests a signature share from the Lit Node
+        // the signature share will be automatically returned in the HTTP response from the node
+        // all the params (toSign, publicKey, sigName) are passed in from the LitJsSdk.executeJs() function
+        try {
+        const sigShare = await LitActions.signEcdsa({toSign: message, publicKey, sigName});
+        } catch (e) {
+          // console.log("error: ", e);
+        }
+      };
+
+      go();
+`;
+    const hashForSig = transaction.hashForSignature(
+      0,
+      toOutputScript(
+        this.ethPubKeyToBtcAddress(pkpPublicKey),
+        this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+      ),
+      bitcoin.Transaction.SIGHASH_ALL,
+    );
+
+    const authSig = await this.generateAuthSig();
+    await this.connect();
+
+    const result = (await this.litClient.executeJs({
+      code: litActionCode,
+      jsParams: {
+        // this is the string "Hello World" for testing
+        message: hashForSig,
+        publicKey: pkpPublicKey,
+        sigName: "sig1",
+      },
+      authSig,
+    })) as any;
+
+    const { sig1 } = result.signatures;
+    const signature = Buffer.from(sig1.r + sig1.s, "hex");
+
+    const compiledSignature = bitcoin.script.compile([
+      bitcoin.script.signature.encode(
+        signature,
+        bitcoin.Transaction.SIGHASH_ALL,
+      ),
+      Buffer.from(PKP_COMPRESSED_PUBLIC_KEY, "hex"),
+    ]);
+
+    transaction.setInputScript(0, compiledSignature);
+    return transaction;
   }
 
   private async connect() {
@@ -229,6 +344,41 @@ export class YachtLitSdk {
     }
   }
 
+  // TODO: Add test for mintPKP
+  // create jsdoc for mintPkp function
+  /**
+   * Mints a PKP NFT on the Polygon Mumbai network
+   * @returns The transaction object
+   */
+  async mintPkp(): Promise<{
+    tokenId: string;
+    publicKey: string;
+    address: string;
+  }> {
+    if (!this.signer) {
+      throw new Error("Signer not set");
+    }
+    try {
+      const feeData = await this.signer.provider.getFeeData();
+      const mintPkpTx = await this.pkpContract.mintNext(2, {
+        value: 1e14,
+        maxFeePerGas: feeData.maxFeePerGas as ethers.BigNumber,
+      });
+      const minedMintPkpTx = await mintPkpTx.wait(2);
+      const pkpTokenId = ethers.BigNumber.from(
+        minedMintPkpTx.logs[1].topics[3],
+      ).toString();
+      const publicKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
+      return {
+        tokenId: pkpTokenId,
+        publicKey: publicKey,
+        address: ethers.utils.computeAddress(publicKey),
+      };
+    } catch (err) {
+      throw new Error(`Error minting PKP: ${err}`);
+    }
+  }
+
   /**
    * Mints a PKP NFT on the Polygon Mumbai network, attaches the Lit Action code to the PKP, then burns the PKP so that the code attached to the PKP cannot be changed.
    * @param ipfsCID - The IPFS cid where your Lit Action code is stored
@@ -262,7 +412,6 @@ export class YachtLitSdk {
     }
     try {
       const feeData = await this.signer.provider.getFeeData();
-      // estimateGAs * feeData.maxFeePerGas
       return await this.pkpContract.mintGrantAndBurnNext(
         2,
         getBytesFromMultihash(ipfsCID),
