@@ -11,3 +11,6 @@ const wallet = new Wallet(
   new providers.JsonRpcProvider(getMumbaiProviderUrl()),
 );
 const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
+
+const btcAddress = sdk.getPkpBtcAddress(wallet.publicKey);
+console.log("btcAddress" : )
