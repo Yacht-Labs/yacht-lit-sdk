@@ -13,7 +13,7 @@ const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
 
 describe("Mint PKP", () => {
   const wallet = new ethers.Wallet(getMumbaiPrivateKey(), provider);
-  const sdk = new YachtLitSdk(wallet);
+  const sdk = new YachtLitSdk({ signer: wallet });
   const pkpContract = new ethers.Contract(
     PKP_CONTRACT_ADDRESS_MUMBAI,
     PKPNFTContract.abi,

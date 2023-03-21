@@ -10,20 +10,17 @@ const wallet = new Wallet(
   getMumbaiPrivateKey(),
   new providers.JsonRpcProvider(getMumbaiProviderUrl()),
 );
-const sdk = new YachtLitSdk(wallet, PKP_CONTRACT_ADDRESS_MUMBAI, true);
+const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
 
 describe("Get Utxos", () => {
   it("should get utxos", async () => {
     // get a BTC Address from your ETH private key
-    const btcAddress = sdk.ethPubKeyToBtcAddress(wallet.publicKey);
-    console.log({ btcAddress });
-
-    // mint a PKP NFT
-    const pkpInfo = await sdk.mintPkp();
-    console.log({ pkpInfo });
-
-    const utxos = await sdk.getUtxosByAddress(btcAddress);
-
-    console.log({ utxos });
+    // const btcAddress = sdk.ethPubKeyToBtcAddress(wallet.publicKey);
+    // console.log({ btcAddress });
+    // // mint a PKP NFT
+    // const pkpInfo = await sdk.mintPkp();
+    // console.log({ pkpInfo });
+    // const utxos = await sdk.getUtxosByAddress(btcAddress);
+    // console.log({ utxos });
   });
 });

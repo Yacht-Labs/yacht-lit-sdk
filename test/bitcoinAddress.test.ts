@@ -3,11 +3,9 @@ import { YachtLitSdk } from "../src";
 import { ethers, Wallet } from "ethers";
 
 describe("Bitcoin Address Testnet Generation", () => {
-  const sdk = new YachtLitSdk(
-    Wallet.createRandom(),
-    PKP_CONTRACT_ADDRESS_MUMBAI,
-    true,
-  );
+  const sdk = new YachtLitSdk({
+    btcTestNet: true,
+  });
   let wallet: Wallet;
   const btcTestNetRegex = new RegExp(/^(m|n|2)[1-9A-Za-z][^OIl]{25,34}$/);
   beforeEach(() => {
@@ -67,7 +65,7 @@ describe("Bitcoin Address Testnet Generation", () => {
 });
 
 describe("Bitcoin Address Mainnet Generation", () => {
-  const sdk = new YachtLitSdk();
+  const sdk = new YachtLitSdk({});
   let wallet: Wallet;
   const btcAddressRegex = new RegExp(/^(bc1|[13])[a-km-zA-HJ-NP-Z1-9]{25,34}$/);
 

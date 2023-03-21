@@ -64,9 +64,9 @@ import { ethers } from "ethers";
 import { YachtLitSdk } from "lit-swap-sdk";
 
 const mumbaiProvider = new ethers.providers.JsonRpcProvider(YOUR_PROVIDER_URL);
-const signer = new ethers.Wallet(YOUR_PRIVATE_KEY_HERE, mumbaiProvider);
+const mySigner = new ethers.Wallet(YOUR_PRIVATE_KEY_HERE, mumbaiProvider);
 
-const yacht = new YachtLitSdk(signer);
+const yacht = new YachtLitSdk({ signer: mySigner });
 ```
 
 To generate an atomic cross-chain swap using the SDK, you'll first need to generate the Lit Action code which checks that two parties have sent their tokens to the PKP escrow address. To do this, agree on your ERC20 swap conditions across two chains. Then, using the instantiated sdk:

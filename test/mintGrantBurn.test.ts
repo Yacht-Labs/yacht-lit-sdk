@@ -19,13 +19,13 @@ const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
 describe("Mint Grant Burn Tests", () => {
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // FAU TOKEN - GOERLI
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // TEST TOKEN - MUMBAI
-  const sdk = new YachtLitSdk(
-    new ethers.Wallet(
+  const sdk = new YachtLitSdk({
+    signer: new ethers.Wallet(
       // Add private key with at least .2 TEST MATIC to .env file to pass tests
       getMumbaiPrivateKey(),
       provider,
     ),
-  );
+  });
   const chainAParams: LitERC20SwapParams = {
     counterPartyAddress: "0x630A5FA5eA0B94daAe707fE105404749D52909B9",
     tokenAddress: tokenAAddress,

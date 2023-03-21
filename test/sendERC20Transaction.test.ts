@@ -4,6 +4,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Deferrable } from "ethers/lib/utils";
+import { ethers as ethersImport } from "ethers";
 
 describe("Yacht-Lit SDK ERC20 Transaction Tests", () => {
   describe("ERC20Transfer", () => {
@@ -26,7 +27,9 @@ describe("Yacht-Lit SDK ERC20 Transaction Tests", () => {
     });
 
     it("Generates and sends an ERC20 token transfer", async () => {
-      const sdk = new YachtLitSdk(owner);
+      const sdk = new YachtLitSdk({
+        signer: owner as unknown as ethersImport.Wallet,
+      });
       const amountToTransfer = "10";
       const unsignedTransaction = sdk.generateUnsignedERC20Transaction({
         tokenAddress: deployedYachtToken.address,

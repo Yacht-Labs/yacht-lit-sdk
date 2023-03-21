@@ -25,7 +25,7 @@ describe("Lit Action Code Tests", () => {
   const counterPartyBAddress = counterPartyBWallet.address;
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // GOERLI FAU TOKEN
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // MUMBAI TEST TOKEN
-  const sdk = new YachtLitSdk(counterPartyBWallet);
+  const sdk = new YachtLitSdk({ signer: counterPartyBWallet });
 
   const tokenAContract = new ethers.Contract(
     tokenAAddress,

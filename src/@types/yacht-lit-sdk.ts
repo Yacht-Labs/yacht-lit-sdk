@@ -1,4 +1,4 @@
-import { UnsignedTransaction } from "ethers";
+import { ethers, UnsignedTransaction } from "ethers";
 import { LitAuthSig } from "./../utils/lit";
 import { BigNumber } from "ethers";
 
@@ -86,32 +86,12 @@ export type LitERC20SwapParams = {
   decimals: number;
 };
 
-export interface LitActionsSDK {
-  checkConditions: ({
-    conditions,
-    authSig,
-    chain,
-  }: {
-    conditions: LitERC20SwapCondition[];
-    authSig: LitAuthSig;
-    chain: string;
-  }) => Promise<boolean>;
-
-  signEcdsa: ({
-    toSign,
-    publicKey,
-    sigName,
-  }: {
-    toSign: Uint8Array;
-    publicKey: string;
-    sigName: string;
-  }) => Promise<void>;
-
-  getLatestNonce: (chain: string) => Promise<number>;
-
-  setResponse: ({ response }: { response: string }) => void;
+export interface LitYachtSdkParams {
+  signer?: ethers.Wallet;
+  pkpContractAddress?: string;
+  btcTestNet?: boolean;
+  btcApiEndpoint?: string;
 }
-
 export const LitChainIds: { [key: string]: number } = {
   ethereum: 1,
   polygon: 137,

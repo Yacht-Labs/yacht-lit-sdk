@@ -20,6 +20,7 @@ import {
   LitERC20SwapParams,
   GasConfig,
   UTXO,
+  LitYachtSdkParams,
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
 import * as bitcoin from "bitcoinjs-lib";
@@ -38,11 +39,12 @@ export class YachtLitSdk {
    * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
    * @param {ethers.Signer} signer - The wallet that will be used to mint a PKP
    */
-  constructor(
-    signer?: ethers.Wallet,
+  constructor({
+    signer,
     pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
     btcTestNet = false,
-  ) {
+    btcApiEndpoint,
+  }: LitYachtSdkParams) {
     this.signer = signer ? signer : ethers.Wallet.createRandom();
     this.litClient = new LitJsSdk.LitNodeClient({
       litNetwork: "serrano",
