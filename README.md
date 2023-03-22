@@ -13,11 +13,13 @@ In our use case, we are using Lit Actions with PKPs to enable atomic cross chain
 **TESTING:**
 To compile and run tests locally:
 
-IMPORTANT NOTE: Some tests consume TEST MATIC and Goerli ETH. To ensure the tests pass, copy the .env.sample file into a .env file, and add a MATIC private key and a Goerli private key each with some native tokens. You will also need an RPC url for both MATIC You can find a faucet at https://goerlifaucet.com/ and https://mumbaifaucet.com/
+IMPORTANT NOTE: Some tests consume TEST MATIC and Goerli ETH. To ensure the tests pass, copy the .env.sample file into a .env file, and add a MATIC private key and a Goerli private key each with some native tokens. You will also need an RPC url for both MATIC and GOERLI. You can find a faucet at https://goerlifaucet.com/ and https://mumbaifaucet.com/
 
-To ensure that bitcoin tests pass, enter your MUMBAI private key in the .env file as noted above, and before running any tests run `yarn run getBtcAddress`. After this, put the bitcoin testnet address in your .env file under BITCOIN_TESTNET_ADDRESS.
+To ensure that bitcoin tests pass, enter your MUMBAI private key in the .env file as noted above as well as your MUMBAI provider URL.
 
-Please note that since the tests are running on-chain it can take some time
+When you run `yarn test` it will prompt you to send testnet Bitcoin to an address. We recommend using this faucet: https://testnet-faucet.com/btc-testnet/
+
+Please note that since the integration tests are running on-chain it can take some time
 
 ```
 yarn install
@@ -177,3 +179,9 @@ await chainBProvider.sendTransaction(
 ```
 
 Please note that using IPFS to upload the code can sometimes fail. In this SDK implementation, we are only generating the IPFS hash for the code. The Lit Protocol Nodes also hash the Lit Action Code and generate an IPFS hash, so if you pass the original code into the sdk you don't actually need to upload the code to IPFS. We are exploring ways to make the IPFS upload function more robust, but until then we recommend only getting the hash of the code and passing the Javascript code string to the sdk.
+
+---
+
+**Bitcoin**
+
+Please refer to our Gitbook page for documentation regarding the Bitcoin capabilities of the SDK.
