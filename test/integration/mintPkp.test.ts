@@ -9,9 +9,8 @@ import {
 import PKPNFTContract from "../../src/abis/PKPNFT.json";
 import { PKPNFT } from "../../typechain-types/contracts/PKPNFT";
 
-const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
-
 describe("Mint PKP", () => {
+  const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
   const wallet = new ethers.Wallet(getMumbaiPrivateKey(), provider);
   const sdk = new YachtLitSdk({ signer: wallet });
   const pkpContract = new ethers.Contract(

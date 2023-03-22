@@ -6,8 +6,9 @@
   "types": "dist/src/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "test": "jest --runInBand",
+    "test": "npm run test:unit && npm run test:integration",
     "test:coverage": "jest --runInBand --coverage",
+    "test:unit": "jest ./test/unit",
     "hardhat-test": "npx hardhat test",
     "build": "tsc --declaration",
     "lint": "eslint --ignore-path .eslintignore --ext .js,.ts .",

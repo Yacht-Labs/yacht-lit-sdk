@@ -27,7 +27,6 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import fetch from "node-fetch";
 import { toOutputScript } from "bitcoinjs-lib/src/address";
-import convert from "xml2json";
 
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
@@ -79,7 +78,7 @@ export class YachtLitSdk {
    * @param {string} ethKey - Ethereum public key (compressed or uncompressed)
    * @returns {string} Bitcoin address
    * @example
-   * const btcAddress = ethPubKeyToBtcAddress("0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
+   * const btcAddress = generateBtcAddress("0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
    */
   generateBtcAddress(ethKey: string): string {
     let compressedPoint: Uint8Array;
@@ -245,7 +244,6 @@ export class YachtLitSdk {
       ),
       bitcoin.Transaction.SIGHASH_ALL,
     );
-
     const litSignature = await this.signBitcoinWithLitAction(
       hashForSig,
       pkpPublicKey,
@@ -257,6 +255,7 @@ export class YachtLitSdk {
       hashForSig,
       signature,
     );
+
     if (!validSignature) throw new Error("Invalid signature");
     const compiledSignature = bitcoin.script.compile([
       bitcoin.script.signature.encode(
@@ -273,28 +272,33 @@ export class YachtLitSdk {
   /**
    * Broadcasts a signed transaction to the Bitcoin network
    * @param {bitcoin.Transaction} transaction - Signed transaction
-   * @returns {Promise<Response>} Response from the Bitcoin API
+   * @returns {Promise<string>} Transaction ID
    * @example
    * const signedTransaction = sdk.signFirstBtcUtxo({
    *  pkpPublicKey: "0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a",
    *  fee: 24,
    *  recipientAddress: "1JwSSubhmg6iPtRjtyqhUYYH7bZg3Lfy1T",
    * })
-   * const response = await sdk.broadcastBtcTransaction(signedTransaction)
+   * const txId = await sdk.broadcastBtcTransaction(signedTransaction)
    */
-  async broadcastBtcTransaction(transaction: bitcoin.Transaction) {
-    const txHex = transaction.toHex();
-    const response = await fetch(
-      `${this.btcApiEndpoint}/${this.btcTestNet ? "testnet/" : null}api/tx`,
-      {
-        method: "POST",
-        body: txHex,
-      },
-    );
-    const data = await response.text();
-    const result = convert.toJson(data, { object: true });
-    console.log("result: ", result);
-    return result;
+  async broadcastBtcTransaction(
+    transaction: bitcoin.Transaction,
+  ): Promise<string> {
+    try {
+      const txHex = transaction.toHex();
+      const response = await fetch(
+        `${this.btcApiEndpoint}/${this.btcTestNet ? "testnet/" : null}api/tx`,
+        {
+          method: "POST",
+          body: txHex,
+        },
+      );
+      const data = await response.text();
+      return data;
+    } catch (err) {
+      console.log(err);
+      throw new Error("Error broadcasting transaction: " + err);
+    }
   }
 
   private async safeParseJSON(response: any) {
