@@ -27,6 +27,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import fetch from "node-fetch";
 import { toOutputScript } from "bitcoinjs-lib/src/address";
+import convert from "xml2json";
 
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
@@ -290,7 +291,21 @@ export class YachtLitSdk {
         body: txHex,
       },
     );
-    return response.json();
+    const data = await response.text();
+    const result = convert.toJson(data, { object: true });
+    console.log("result: ", result);
+    return result;
+  }
+
+  private async safeParseJSON(response: any) {
+    const body = await response.text();
+    try {
+      return JSON.parse(body);
+    } catch (err) {
+      console.error("Error:", err);
+      console.error("Response body:", body);
+      throw new Error("Error parsing response body");
+    }
   }
 
   private async connect() {
