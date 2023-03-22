@@ -1,4 +1,4 @@
-import { LitERC20SwapParams, YachtLitSdk } from "../src";
+import { LitERC20SwapParams, YachtLitSdk } from "../../src";
 import { ethers, Wallet } from "ethers";
 import { expect } from "chai";
 import {
@@ -6,10 +6,10 @@ import {
   getGoerliProviderUrl,
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
-} from "../src/utils/environment";
-import TestTokenContract from "../src/abis/TestToken.json";
-import { TestToken } from "../typechain-types/contracts/TestToken";
-import { GasConfig } from "../src";
+} from "../../src/utils/environment";
+import TestTokenContract from "../../src/abis/TestToken.json";
+import { TestToken } from "../../typechain-types/contracts/TestToken";
+import { GasConfig } from "../../src";
 
 describe("Lit Action Code Tests", () => {
   let response: any;

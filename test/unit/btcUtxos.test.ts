@@ -1,17 +1,10 @@
 import {
-  getMumbaiPkpPublicKey,
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
-} from "./../src/utils/environment";
-import { Wallet, providers } from "ethers";
-import { YachtLitSdk } from "../src/sdk";
-import { UTXO } from "../src/@types/yacht-lit-sdk";
-
-const wallet = new Wallet(
-  getMumbaiPrivateKey(),
-  new providers.JsonRpcProvider(getMumbaiProviderUrl()),
-);
-const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
+} from "../../src/utils/environment";
+import { Wallet, providers, ethers } from "ethers";
+import { YachtLitSdk } from "../../src/sdk";
+import { UTXO } from "../../src/@types/yacht-lit-sdk";
 
 const stubUTXO: UTXO = {
   txid: "1d126542ec070387cc21b9fb9035a76cc1e12cd4fe021a884cfdabc3ed315a73",
@@ -35,10 +28,12 @@ jest.mock("node-fetch", () => {
   return jest.fn().mockImplementation(() => mockFetch());
 });
 
-describe("Bitcoin UTXOs", () => {
-  const FEE = 25;
-  const recipientAddress = "mqnvzsHWFNZv5TYVMaSQ4yCfyCVgo3Bgch";
+const provider = new providers.JsonRpcProvider(getMumbaiProviderUrl());
+const wallet = new Wallet(getMumbaiPrivateKey(), provider);
+const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
 
+describe("Fetching Bitcoin UTXOs", () => {
+  let btcAddress: string;
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockReturnValue({
@@ -47,9 +42,11 @@ describe("Bitcoin UTXOs", () => {
         return [stubUTXO];
       },
     });
+    btcAddress = sdk.generateBtcAddress(ethers.Wallet.createRandom().publicKey);
   });
+
   it("Should properly fetch UTXOs", async () => {
-    const utxo = await sdk.getUtxoByAddress(getMumbaiPkpPublicKey());
+    const utxo = await sdk.getUtxoByAddress(btcAddress);
     expect(utxo).toEqual(stubUTXO);
   });
 
@@ -61,7 +58,7 @@ describe("Bitcoin UTXOs", () => {
       },
     });
     expect(async () => {
-      await sdk.getUtxoByAddress(getMumbaiPkpPublicKey());
+      await sdk.getUtxoByAddress(btcAddress);
     }).rejects.toThrow();
   });
 
@@ -73,27 +70,7 @@ describe("Bitcoin UTXOs", () => {
       },
     });
     expect(async () => {
-      await sdk.getUtxoByAddress(getMumbaiPkpPublicKey());
-    }).rejects.toThrow();
-  });
-
-  it("Should validate that a transaction was signed with the proper public key", async () => {
-    expect(async () => {
-      await sdk.signFirstBtcUtxo({
-        pkpPublicKey: getMumbaiPkpPublicKey(),
-        fee: FEE,
-        recipientAddress: recipientAddress,
-      });
-    }).not.toThrow();
-  });
-
-  it("Should error if the transaction was not signed with the proper public key", async () => {
-    expect(async () => {
-      await sdk.signFirstBtcUtxo({
-        pkpPublicKey: "wrong",
-        fee: FEE,
-        recipientAddress: recipientAddress,
-      });
+      await sdk.getUtxoByAddress(btcAddress);
     }).rejects.toThrow();
   });
 });

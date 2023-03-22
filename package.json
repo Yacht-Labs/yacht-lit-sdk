@@ -13,8 +13,9 @@
     "lint": "eslint --ignore-path .eslintignore --ext .js,.ts .",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "postinstall": "typechain --target ethers-v5 --out-dir typechain-types/contracts './src/abis/*.json'",
-    "build-publish": "npm run build && npm publish",
-    "getBtcAddress": "ts-node src/scripts/getBtcAddress.ts"
+    "test:integration": "./scripts/runBitcoinIntegrationTest.sh",
+    "internal:integration:test": "jest --runInBand ./test/integration",
+    "build-publish": "npm run build && npm publish"
   },
   "dependencies": {
     "@lit-protocol/sdk-nodejs": "^1.2.32",

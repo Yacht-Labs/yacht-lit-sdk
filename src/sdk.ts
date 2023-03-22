@@ -81,7 +81,7 @@ export class YachtLitSdk {
    * @example
    * const btcAddress = ethPubKeyToBtcAddress("0x043fd854ac22b8c80eadd4d8354ab8e74325265a065e566d82a21d578da4ef4d7af05d27e935d38ed28d5fda657e46a0dc4bab62960b4ad586b9c22d77f786789a");
    */
-  getPkpBtcAddress(ethKey: string): string {
+  generateBtcAddress(ethKey: string): string {
     let compressedPoint: Uint8Array;
     if (ethKey.length === 130) {
       compressedPoint = ecc.pointCompress(Buffer.from(ethKey, "hex"), true);
@@ -229,7 +229,7 @@ export class YachtLitSdk {
       true,
     );
 
-    const pkpBtcAddress = this.getPkpBtcAddress(pkpPublicKey);
+    const pkpBtcAddress = this.generateBtcAddress(pkpPublicKey);
     const utxo = await this.getUtxoByAddress(pkpBtcAddress);
     const transaction = this.prepareTransactionForSignature({
       utxo,

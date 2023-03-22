@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ethers } from "ethers";
-import { YachtLitSdk } from "../src";
-import { PKP_CONTRACT_ADDRESS_MUMBAI } from "../src/constants";
+import { YachtLitSdk } from "../../src";
+import { PKP_CONTRACT_ADDRESS_MUMBAI } from "../../src/constants";
 import {
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
-} from "../src/utils/environment";
-import PKPNFTContract from "../src/abis/PKPNFT.json";
-import { PKPNFT } from "../typechain-types/contracts/PKPNFT";
+} from "../../src/utils/environment";
+import PKPNFTContract from "../../src/abis/PKPNFT.json";
+import { PKPNFT } from "../../typechain-types/contracts/PKPNFT";
 
 const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
 

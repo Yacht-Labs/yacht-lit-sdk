@@ -1,10 +1,6 @@
-const {
-  getMumbaiPkpPublicKey,
-  getMumbaiPrivateKey,
-  getMumbaiProviderUrl,
-} = require("./environment");
-const { Wallet, providers } = require("ethers");
-const { YachtLitSdk } = require("../sdk");
+import { getMumbaiPrivateKey, getMumbaiProviderUrl } from "./environment";
+import { Wallet, providers } from "ethers";
+import { YachtLitSdk } from "../sdk";
 
 const wallet = new Wallet(
   getMumbaiPrivateKey(),
@@ -14,7 +10,7 @@ const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
 
 (async () => {
   const { publicKey } = await sdk.mintPkp();
-  const btcAddress = await sdk.getPkpBtcAddress(publicKey);
+  const btcAddress = await sdk.generateBtcAddress(publicKey);
   console.log(btcAddress + "." + publicKey);
 })().catch((err) => {
   console.error(err);

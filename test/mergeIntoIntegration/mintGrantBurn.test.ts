@@ -1,19 +1,19 @@
 import {
   PKP_CONTRACT_ADDRESS_MUMBAI,
   PKP_PERMISSIONS_CONTRACT_ADDRESS,
-} from "./../src/constants/index";
-import { getBytesFromMultihash } from "../src/utils";
-import { LitERC20SwapParams, YachtLitSdk } from "../src";
+} from "../../src/constants/index";
+import { getBytesFromMultihash } from "../../src/utils";
+import { LitERC20SwapParams, YachtLitSdk } from "../../src";
 import { ethers } from "ethers";
-import PKPNFTContract from "../src/abis/PKPNFT.json";
-import PKPPermissionsContract from "../src/abis/PKPPermissions.json";
-import { PKPNFT } from "../typechain-types/contracts/PKPNFT";
-import { PKPPermissions } from "../typechain-types/contracts/PKPPermissions";
+import PKPNFTContract from "../../src/abis/PKPNFT.json";
+import PKPPermissionsContract from "../../src/abis/PKPPermissions.json";
+import { PKPNFT } from "../../typechain-types/contracts/PKPNFT";
+import { PKPPermissions } from "../../typechain-types/contracts/PKPPermissions";
 import {
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
-} from "../src/utils/environment";
-import { GasConfig } from "../src";
+} from "../../src/utils/environment";
+import { GasConfig } from "../../src";
 
 const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
 describe("Mint Grant Burn Tests", () => {

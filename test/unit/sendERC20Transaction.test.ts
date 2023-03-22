@@ -1,5 +1,5 @@
 import { TransactionRequest } from "@ethersproject/providers";
-import { YachtLitSdk } from "./../src/sdk";
+import { YachtLitSdk } from "../../src/sdk";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";

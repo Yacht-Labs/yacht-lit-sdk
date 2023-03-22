@@ -1,10 +1,9 @@
 import { ethers } from "ethers";
-import { YachtLitSdk } from "../src";
+import { YachtLitSdk } from "../../src";
 import {
-  getMumbaiPkpPublicKey,
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
-} from "../src/utils/environment";
+} from "../../src/utils/environment";
 
 describe("Bitcoin send utxo integration test", () => {
   const wallet = new ethers.Wallet(
@@ -21,16 +20,29 @@ describe("Bitcoin send utxo integration test", () => {
     btcTestNet: true,
     signer: recipientWallet,
   });
-  const recipientAddress = recipientSDK.getPkpBtcAddress(wallet.publicKey);
+  const recipientAddress = recipientSDK.generateBtcAddress(wallet.publicKey);
 
+  console.log("Process.argv: ", process.argv);
   let pkpPublicKey = process.argv[4];
   pkpPublicKey = pkpPublicKey.slice(1, -1);
+  const btcAddress = sdk.generateBtcAddress(pkpPublicKey);
   console.log({ pkpPublicKey });
   console.log(
-    `Bitcoin address ${sdk.getPkpBtcAddress(
+    `Bitcoin address ${sdk.generateBtcAddress(
       pkpPublicKey,
     )} must have at least one unspent UTXO`,
   );
+
+  beforeAll(async () => {
+    const utxo = await sdk.getUtxoByAddress(btcAddress);
+    if (!utxo) {
+      throw new Error(
+        `Bitcoin address ${sdk.generateBtcAddress(
+          pkpPublicKey,
+        )} must have at least one unspent UTXO`,
+      );
+    }
+  });
 
   it("Should properly send UTXO", async () => {
     const signedTx = await sdk.signFirstBtcUtxo({
@@ -38,9 +50,7 @@ describe("Bitcoin send utxo integration test", () => {
       fee: 25,
       recipientAddress,
     });
-    console.log({ signedTx });
     const tx = await sdk.broadcastBtcTransaction(signedTx);
-    console.dir(tx, { depth: null });
     expect(tx).toBeTruthy();
   });
 });
