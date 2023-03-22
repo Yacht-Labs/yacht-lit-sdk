@@ -1,3 +1,6 @@
+**NOTE**
+You are on the bitcoin branch. To install this version, use `yarn add lit-swap-sdk@bitcoin`
+
 This is the Yacht-Lit-SDK which facilitates cross chain atomic swaps using Lit Protocol [Programmable Key Pairs](https://developer.litprotocol.com/coreConcepts/LitActionsAndPKPs/PKPs) (PKPs) and [Lit Actions](https://developer.litprotocol.com/coreConcepts/LitActionsAndPKPs/litActions).
 
 Check out our [gitbook documentation](https://hank-minden.gitbook.io/yacht-lit-sdk-developer-docs/) for more in-depth descriptions of implementation details
