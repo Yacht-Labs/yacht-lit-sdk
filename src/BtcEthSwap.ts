@@ -1,5 +1,5 @@
 import { UtxoResponse } from "./@types/yacht-lit-sdk";
-const Lit: any;
+const Lit: any = null;
 export async function go() {
   try {
     const btcSwapParams = "{{btcSwapParams}}" as any;
@@ -7,16 +7,19 @@ export async function go() {
 
     let response: Record<any, any> = {};
     const ADDRESS = "0x0000000";
-    const utxoResponse = await fetch("https://mempool.space/api/address/1KFHE7w8BhaENAswwryaoccDb6qcT6DbYY/utxo");
-    const utxo = await utxoResponse.json() as UtxoResponse;
+    const utxoResponse = await fetch(
+      "https://mempool.space/api/address/1KFHE7w8BhaENAswwryaoccDb6qcT6DbYY/utxo",
+    );
+    const utxo = (await utxoResponse.json()) as UtxoResponse;
     if (utxo.length === 0) {
       throw new Error("No UTXOs found on the PKP BTC address");
     }
     const utxoToSpend = utxo[0];
     if (utxoToSpend.value !== btcSwapParams.value) {
-      throw new Error(`UTXO ${utxoToSpend.txid} value does not match the expected value`);
+      throw new Error(
+        `UTXO ${utxoToSpend.txid} value does not match the expected value`,
+      );
     }
-
   } catch (err) {
     Lit.Actions.setResponse({
       response: JSON.stringify({ error: (err as Error).message }),
