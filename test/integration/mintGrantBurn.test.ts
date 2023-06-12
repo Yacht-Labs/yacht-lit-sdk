@@ -98,7 +98,7 @@ describe("Mint Grant Burn Tests", () => {
 
   it("The PKP should not allow arbitrary Lit Action execution", async () => {
     const authSig = await sdk.generateAuthSig();
-    const response = await sdk.runLitAction({
+    const response = await sdk.runErc20SwapLitAction({
       authSig,
       pkpPublicKey: pkpNftPublicKey,
       code: `const go = async () => {
@@ -122,7 +122,7 @@ describe("Mint Grant Burn Tests", () => {
 
   it("The PKP can successfully execute the Lit Action that was granted", async () => {
     const authSig = await sdk.generateAuthSig();
-    const response = await sdk.runLitAction({
+    const response = await sdk.runErc20SwapLitAction({
       authSig,
       pkpPublicKey: pkpNftPublicKey,
       code: LitActionCode + randomNonce,

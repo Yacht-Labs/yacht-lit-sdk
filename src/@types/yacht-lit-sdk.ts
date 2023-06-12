@@ -1,3 +1,4 @@
+import { MinEthersFactory } from './../../typechain-types/common';
 import { ethers, UnsignedTransaction } from "ethers";
 import { LitAuthSig } from "./../utils/lit";
 import { BigNumber } from "ethers";
@@ -23,6 +24,19 @@ export type LitERC20SwapCondition = {
   standardContractType: "ERC20";
   chain: string;
   method: "balanceOf";
+  parameters: [string];
+  returnValueTest: {
+    comparator: ">=";
+    value: string;
+  };
+};
+
+export type LitEVMNativeSwapCondition = {
+  conditionType: "evmBasic";
+  contractAddress: "";
+  standardContractType: "";
+  chain: string;
+  method: "eth_getBalance";
   parameters: [string];
   returnValueTest: {
     comparator: ">=";
@@ -78,6 +92,19 @@ export type LitActionCodeResponse = {
   };
 };
 
+export type UtxoResponse = {
+  txid: string;
+  vout: number;
+  status: {
+    confirmed: boolean;
+    block_height: number;
+    block_hash: string;
+    block_time: number;
+  };
+  value: number;
+}[];
+
+
 export type LitERC20SwapParams = {
   counterPartyAddress: string;
   tokenAddress: string;
@@ -85,6 +112,20 @@ export type LitERC20SwapParams = {
   amount: string;
   decimals: number;
 };
+
+export type LitEthSwapParams = {
+  counterPartyAddress: string;
+  chain: string;
+  value: number;
+  btcAddress: string;
+}
+
+export type LitBtcSwapParams = {
+  counterPartyAddress: string;
+  amount: string;
+  network: "testnet" | "mainnet";
+  ethAddress: string;
+}
 
 export interface LitYachtSdkParams {
   signer?: ethers.Wallet;

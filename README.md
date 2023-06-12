@@ -112,7 +112,7 @@ const pkpInfo = await sdk.mintGrantBurnWithLitAction(ipfsCID);
 The object returned by `mintGrantBurnWithLitAction` has the following properties: `tokenId`, `publicKey` and `address`. The address is the PKP escrow account where you'll send your ERC20 tokens. The publicKey is the uncompressed public key used by the ECDSA algorithm to derive the address. To execute the Lit Action, we'll need the Lit Action code itself and the `publicKey`:
 
 ```typescript
-const response = await sdk.runLitAction({code: litActionCode, pkpPublicKey: pkpInfo.publicKey);
+const response = await sdk.runErc20SwapLitAction({code: litActionCode, pkpPublicKey: pkpInfo.publicKey);
 ```
 
 A response when both parties have sent their ERC20 tokens to the pkp address looks like the following:

@@ -21,6 +21,9 @@ import {
   GasConfig,
   UTXO,
   LitYachtSdkParams,
+  LitEthSwapParams,
+  LitBtcSwapParams,
+  LitEVMNativeSwapCondition
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
 import * as bitcoin from "bitcoinjs-lib";
@@ -320,6 +323,16 @@ export class YachtLitSdk {
     }
   }
 
+  createBtcEthSwapLitAction(ethParams: LitEthSwapParams, btcParams: LitBtcSwapParams, originTime?: number) {
+    const ethChainIsValid = Object.keys(LitChainIds).includes(ethParams.chain);
+    if (!ethChainIsValid) {
+      throw new Error(
+        `Invalid chain name. Valid chains: ${Object.keys(LitChainIds)}`,
+      );
+    }
+    // generateEthSwapCondition
+    
+  }
   /**
    * Generates the Lit Action code that will be uploaded to IPFS and manages the logic for the cross chain atomic swap
    * @param {LitERC20SwapParams} chainAParams - Parameters for the swap on Chain A
@@ -392,6 +405,24 @@ export class YachtLitSdk {
             ),
           )
           .toString(),
+      },
+    };
+  }
+
+  private generateEVMNativeSwapCondition(conditionParams: {
+    chain: string;
+    amount: string;
+  }): LitEVMNativeSwapCondition {
+    return {
+      conditionType: "evmBasic",
+      contractAddress: "",
+      standardContractType: "",
+      chain: conditionParams.chain,
+      method: "eth_getBalance",
+      parameters: ["address"],
+      returnValueTest: {
+        comparator: ">=",
+        value: conditionParams.amount,
       },
     };
   }
@@ -574,7 +605,7 @@ export class YachtLitSdk {
    * @param {code}
    * @returns
    */
-  async runLitAction({
+  async runErc20SwapLitAction({
     pkpPublicKey,
     ipfsCID,
     code,

@@ -80,7 +80,7 @@ describe("Lit Action Code Tests", () => {
       ).wait(2);
 
       const authSig = await sdk.generateAuthSig();
-      response = await sdk.runLitAction({
+      response = await sdk.runErc20SwapLitAction({
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
@@ -179,7 +179,7 @@ describe("Lit Action Code Tests", () => {
       ).wait(2);
 
       const authSig = await sdk.generateAuthSig();
-      response = await sdk.runLitAction({
+      response = await sdk.runErc20SwapLitAction({
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
@@ -225,7 +225,7 @@ describe("Lit Action Code Tests", () => {
       ).wait(2);
 
       const authSig = await sdk.generateAuthSig();
-      response = await sdk.runLitAction({
+      response = await sdk.runErc20SwapLitAction({
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
