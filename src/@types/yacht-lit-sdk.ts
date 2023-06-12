@@ -30,6 +30,19 @@ export type LitERC20SwapCondition = {
   };
 };
 
+export type LitEVMNativeSwapCondition = {
+  conditionType: "evmBasic";
+  contractAddress: "";
+  standardContractType: "";
+  chain: string;
+  method: "eth_getBalance";
+  parameters: [string];
+  returnValueTest: {
+    comparator: ">=";
+    value: string;
+  };
+};
+
 export type LitSwapTransaction = {
   counterPartyAddress: string;
   tokenAddress: string;
@@ -84,6 +97,20 @@ export type LitERC20SwapParams = {
   chain: string;
   amount: string;
   decimals: number;
+};
+
+export type LitEthSwapParams = {
+  counterPartyAddress: string;
+  chain: string;
+  amount: string;
+  btcAddress: string;
+};
+
+export type LitBtcSwapParams = {
+  counterPartyAddress: string;
+  network: "testnet" | "mainnet";
+  amount: string;
+  ethAddress: string;
 };
 
 export interface LitYachtSdkParams {
