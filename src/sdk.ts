@@ -607,6 +607,108 @@ export class YachtLitSdk {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
 
+  async runBtcEthSwapLitAction({
+    pkpPublicKey,
+    ipfsCID,
+    code,
+    authSig,
+    ethGasConfig,
+    btcFeeRate,
+    ethParams,
+    btcParams,
+  }: {
+    pkpPublicKey: string;
+    ipfsCID: string;
+    code?: string;
+    authSig?: any;
+    ethGasConfig: GasConfig;
+    btcFeeRate: number;
+    btcParams: LitBtcSwapParams;
+    ethParams: LitEthSwapParams;
+  }) {
+    try {
+      const { successHash, clawbackHash, utxo } =
+        await this.prepareBtcSwapTransactions(
+          btcParams,
+          ethParams,
+          ipfsCID,
+          pkpPublicKey,
+          btcFeeRate,
+        );
+      await this.connect();
+      const response = await this.litClient.executeJs({
+        ipfsId: ipfsCID,
+        code: code,
+        authSig: authSig ? authSig : await this.generateAuthSig(),
+        jsParams: {
+          pkpAddress: ethers.utils.computeAddress(pkpPublicKey),
+          pkpBtcAddress: this.generateBtcAddress(pkpPublicKey),
+          pkpPublicKey: pkpPublicKey,
+          authSig: authSig ? authSig : await this.generateAuthSig(),
+          ethGasConfig: ethGasConfig,
+          btcFeeRate: btcFeeRate,
+          successHash: successHash,
+          clawbackHash: clawbackHash,
+          passedInUtxo: utxo,
+        },
+      });
+      return response;
+    } catch (e) {
+      throw new Error(`Error running btc eth swap lit action: ${e}`);
+    }
+  }
+
+  private async prepareBtcSwapTransactions(
+    btcParams: LitBtcSwapParams,
+    ethParams: LitEthSwapParams,
+    ipfsCID: string,
+    pkpPublicKey: string,
+    btcFeeRate: number,
+  ) {
+    try {
+      const checksum = await this.getIPFSHash(
+        await this.generateBtcEthSwapLitActionCode(btcParams, ethParams),
+      );
+      if (checksum !== ipfsCID) {
+        throw new Error(
+          "IPFS CID does not match generated Lit Action code.  You may have the incorrect parameters.",
+        );
+      }
+      // generate lit action code with eth and btc params
+      // get ipfsCID
+      // if it doesnt match throw an error
+      const btcAddress = this.generateBtcAddress(pkpPublicKey);
+      const utxo = await this.getUtxoByAddress(btcAddress);
+      const btcSuccessTransaction = this.prepareTransactionForSignature({
+        utxo,
+        recipientAddress: ethParams.btcAddress,
+        fee: btcFeeRate,
+      });
+      const successHash = btcSuccessTransaction.hashForSignature(
+        0,
+        toOutputScript(btcAddress),
+        bitcoin.Transaction.SIGHASH_ALL,
+      );
+      const btcClawbackTransaction = this.prepareTransactionForSignature({
+        utxo,
+        recipientAddress: btcParams.counterPartyAddress,
+        fee: btcFeeRate,
+      });
+      const clawbackHash = btcClawbackTransaction.hashForSignature(
+        0,
+        toOutputScript(btcAddress),
+        bitcoin.Transaction.SIGHASH_ALL,
+      );
+      return {
+        successHash,
+        clawbackHash,
+        utxo,
+      };
+    } catch (err) {
+      throw new Error(`Error in runBtcEthSwapLitAction: ${err}`);
+    }
+  }
+
   /**
    * Executes the Lit Action code associated with the given PKP.  If the swap conditions have been met, then it will respond with the transactions that need to be signed. If not, it will respond with the string "Conditions for swap not met!"
    * @param {Object} LitActionParameters - Information needed to execute a Lit Action for a cross chain atomic swap
