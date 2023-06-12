@@ -1,4 +1,4 @@
-import { MinEthersFactory } from './../../typechain-types/common';
+import { MinEthersFactory } from "./../../typechain-types/common";
 import { ethers, UnsignedTransaction } from "ethers";
 import { LitAuthSig } from "./../utils/lit";
 import { BigNumber } from "ethers";
@@ -116,16 +116,16 @@ export type LitERC20SwapParams = {
 export type LitEthSwapParams = {
   counterPartyAddress: string;
   chain: string;
-  value: number;
+  amount: string;
   btcAddress: string;
-}
+};
 
 export type LitBtcSwapParams = {
   counterPartyAddress: string;
-  amount: string;
   network: "testnet" | "mainnet";
+  amount: string;
   ethAddress: string;
-}
+};
 
 export interface LitYachtSdkParams {
   signer?: ethers.Wallet;

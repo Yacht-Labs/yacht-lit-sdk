@@ -21,15 +21,17 @@ import {
   GasConfig,
   UTXO,
   LitYachtSdkParams,
+  LitEVMNativeSwapCondition,
   LitEthSwapParams,
   LitBtcSwapParams,
-  LitEVMNativeSwapCondition
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import fetch from "node-fetch";
 import { toOutputScript } from "bitcoinjs-lib/src/address";
+import fs from "fs";
+import path from "path";
 
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
@@ -459,6 +461,26 @@ export class YachtLitSdk {
     };
   }
 
+  generateUnsignedEVMNativeTransaction(transactionParams: {
+    counterPartyAddress: string;
+    chain: string;
+    amount: string;
+    from?: string;
+    nonce?: number;
+  }): LitUnsignedTransaction {
+    return {
+      to: transactionParams.counterPartyAddress,
+      nonce: transactionParams.nonce ? transactionParams.nonce : 0,
+      chainId: LitChainIds[transactionParams.chain],
+      gasLimit: "21000",
+      from: transactionParams.from
+        ? transactionParams.from
+        : "{{pkpPublicKey}}",
+      value: transactionParams.amount,
+      type: 2,
+    };
+  }
+
   /**
    *
    * @param {string} code - The Lit Action code to be uploaded to IPFS
@@ -664,6 +686,80 @@ export class YachtLitSdk {
     const signer = new SigningKey("0x" + privateKey);
     const encodedSignature = signer.signDigest(message);
     return serialize(tx, encodedSignature);
+  }
+
+  private generateBtcEthSwapLitActionCode = async (
+    btcParams: LitBtcSwapParams,
+    ethParams: LitEthSwapParams,
+    filename: string,
+  ) => {
+    const ethCondition = this.generateEVMNativeSwapCondition(ethParams);
+    const unsignedEthTransaction = this.generateUnsignedEVMNativeTransaction({
+      counterPartyAddress: btcParams.counterPartyAddress,
+      chain: ethParams.chain,
+      amount: ethParams.amount,
+    });
+    const unsignedEthClawbackTransaction =
+      this.generateUnsignedEVMNativeTransaction({
+        counterPartyAddress: ethParams.counterPartyAddress,
+        chain: ethParams.chain,
+        amount: ethParams.amount,
+      });
+
+    const variablesToReplace = {
+      ethCondition: JSON.stringify(ethCondition),
+      unsignedEthTransaction: JSON.stringify(unsignedEthTransaction),
+      unsignedEthClawbackTransaction: JSON.stringify(
+        unsignedEthClawbackTransaction,
+      ),
+    };
+
+    return await this.loadActionCode(filename, variablesToReplace);
+  };
+
+  async loadActionCode(
+    fileName: string,
+    variables: Record<string, string>,
+  ): Promise<string> {
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "lit",
+      "action",
+      "javascript",
+      `${fileName}.js`,
+    );
+
+    const code = await new Promise<string>((resolve, reject) => {
+      fs.readFile(filePath, "utf8", (err, data) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    return this.replaceCodeVariables(code, variables);
+  }
+
+  /* 
+  example usage: 
+  const variables = {
+    hardEthPrice: "42069",
+    hardEthPayoutAddress: "0x48F9E3AD6fe234b60c90dAa2A4f9eb5a247a74C3",
+  };
+  replaceVariables(code, variables);
+  */
+  private replaceCodeVariables(content: string, variables: any) {
+    let result = content;
+    for (const key in variables) {
+      const placeholder = `{{${key}}}`;
+      const value = variables[key];
+      result = result.split(placeholder).join(value);
+    }
+    return result;
   }
 
   private generateERC20SwapLitActionCode = (

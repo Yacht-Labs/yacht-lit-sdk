@@ -4,6 +4,7 @@ export async function go() {
   try {
     const btcSwapParams = "{{btcSwapParams}}" as any;
     const ethSwapParams = "{{ethSwapParams}}" as any;
+
     let response: Record<any, any> = {};
     const ADDRESS = "0x0000000";
     const utxoResponse = await fetch("https://mempool.space/api/address/1KFHE7w8BhaENAswwryaoccDb6qcT6DbYY/utxo");
@@ -24,15 +25,17 @@ export async function go() {
   // pass in ETH swap condition as const
   // pass in BTC swap condition as const
   // pass in ETH unsigned transaction as const
-  // pass in BTC utxo as const
+  // pass in ETH Clawback transaction as const
+  // pass in BTC transaction Info (id, vout, hash to sign) for sending & clawback as jsParam
 
   // fetch all BTC UTXOs
+  // validate the btcTransactionInfo passed in jsParams
 
   // check if both conditions are met
   // if yes sign both transactions
 
   // if ETH condition is met:
-  // check if there is spent output to ETH wallet
+  // check if there is a transaction that has been sent from the PKP Address
   // if yes sign both transactions
 
   // if BTC condition is met:
