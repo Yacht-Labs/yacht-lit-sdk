@@ -1,4 +1,3 @@
-import { MinEthersFactory } from "./../../typechain-types/common";
 import { ethers, UnsignedTransaction } from "ethers";
 import { LitAuthSig } from "./../utils/lit";
 import { BigNumber } from "ethers";
@@ -121,7 +120,7 @@ export type LitEthSwapParams = {
 
 export type LitBtcSwapParams = {
   counterPartyAddress: string;
-  network: "testnet" | "mainnet";
+  network: string;
   amount: string;
   ethAddress: string;
 };

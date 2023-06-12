@@ -783,6 +783,7 @@ export class YachtLitSdk {
   generateBtcEthSwapLitActionCode = async (
     btcParams: LitBtcSwapParams,
     ethParams: LitEthSwapParams,
+    fileName?: string,
   ) => {
     const ethCondition = this.generateEVMNativeSwapCondition(ethParams);
     const unsignedEthTransaction = this.generateUnsignedEVMNativeTransaction({
@@ -798,6 +799,8 @@ export class YachtLitSdk {
       });
 
     const variablesToReplace = {
+      btcSwapParams: JSON.stringify(btcParams),
+      ethSwapParams: JSON.stringify(ethParams),
       ethCondition: JSON.stringify(ethCondition),
       unsignedEthTransaction: JSON.stringify(unsignedEthTransaction),
       unsignedEthClawbackTransaction: JSON.stringify(
@@ -805,21 +808,15 @@ export class YachtLitSdk {
       ),
     };
 
-    return await this.loadActionCode(variablesToReplace);
+    return await this.loadActionCode(variablesToReplace, fileName);
   };
 
   private async loadActionCode(
     variables: Record<string, string>,
+    fileName?: string,
   ): Promise<string> {
-    const filePath = path.join(
-      __dirname,
-      "..",
-      "..",
-      "lit",
-      "action",
-      "javascript",
-      "btcEthSwap.js",
-    );
+    const resolvedFilename = fileName ? fileName : "BtcEthSwap.bundle.js";
+    const filePath = path.join(__dirname, "javascript", resolvedFilename);
     try {
       const code = await new Promise<string>((resolve, reject) => {
         fs.readFile(filePath, "utf8", (err, data) => {
@@ -849,7 +846,7 @@ export class YachtLitSdk {
   private replaceCodeVariables(content: string, variables: any) {
     let result = content;
     for (const key in variables) {
-      const placeholder = `{{${key}}}`;
+      const placeholder = `"{{${key}}}"`;
       const value = variables[key];
       result = result.split(placeholder).join(value);
     }
