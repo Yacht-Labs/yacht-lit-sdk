@@ -325,16 +325,6 @@ export class YachtLitSdk {
     }
   }
 
-  createBtcEthSwapLitAction(ethParams: LitEthSwapParams, btcParams: LitBtcSwapParams, originTime?: number) {
-    const ethChainIsValid = Object.keys(LitChainIds).includes(ethParams.chain);
-    if (!ethChainIsValid) {
-      throw new Error(
-        `Invalid chain name. Valid chains: ${Object.keys(LitChainIds)}`,
-      );
-    }
-    // generateEthSwapCondition
-    
-  }
   /**
    * Generates the Lit Action code that will be uploaded to IPFS and manages the logic for the cross chain atomic swap
    * @param {LitERC20SwapParams} chainAParams - Parameters for the swap on Chain A
@@ -688,14 +678,13 @@ export class YachtLitSdk {
     return serialize(tx, encodedSignature);
   }
 
-  private generateBtcEthSwapLitActionCode = async (
+  generateBtcEthSwapLitActionCode = async (
     btcParams: LitBtcSwapParams,
     ethParams: LitEthSwapParams,
-    filename: string,
   ) => {
     const ethCondition = this.generateEVMNativeSwapCondition(ethParams);
     const unsignedEthTransaction = this.generateUnsignedEVMNativeTransaction({
-      counterPartyAddress: btcParams.counterPartyAddress,
+      counterPartyAddress: btcParams.ethAddress,
       chain: ethParams.chain,
       amount: ethParams.amount,
     });
@@ -714,11 +703,10 @@ export class YachtLitSdk {
       ),
     };
 
-    return await this.loadActionCode(filename, variablesToReplace);
+    return await this.loadActionCode(variablesToReplace);
   };
 
-  async loadActionCode(
-    fileName: string,
+  private async loadActionCode(
     variables: Record<string, string>,
   ): Promise<string> {
     const filePath = path.join(
@@ -728,20 +716,24 @@ export class YachtLitSdk {
       "lit",
       "action",
       "javascript",
-      `${fileName}.js`,
+      "btcEthSwap.js",
     );
-
-    const code = await new Promise<string>((resolve, reject) => {
-      fs.readFile(filePath, "utf8", (err, data) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(data);
-        }
+    try {
+      const code = await new Promise<string>((resolve, reject) => {
+        fs.readFile(filePath, "utf8", (err, data) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
       });
-    });
 
-    return this.replaceCodeVariables(code, variables);
+      return this.replaceCodeVariables(code, variables);
+    } catch (err) {
+      console.log(`Error loading Lit action code: ${err}`);
+      return "";
+    }
   }
 
   /* 

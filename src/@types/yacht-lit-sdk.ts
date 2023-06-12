@@ -104,7 +104,6 @@ export type UtxoResponse = {
   value: number;
 }[];
 
-
 export type LitERC20SwapParams = {
   counterPartyAddress: string;
   tokenAddress: string;
