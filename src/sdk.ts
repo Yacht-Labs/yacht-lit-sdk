@@ -304,7 +304,7 @@ export class YachtLitSdk {
     const transaction = bitcoin.Transaction.fromHex(transactionString);
 
     transaction.setInputScript(0, compiledSignature);
-    return transaction;
+    return transaction.toHex();
   }
 
   /**
