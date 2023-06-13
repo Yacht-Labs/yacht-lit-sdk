@@ -1,15 +1,39 @@
 import { UTXO, UtxoResponse } from "./@types/yacht-lit-sdk";
+import {
+  generateBtcParams,
+  generateEthParams,
+} from "../test/unit/BtcSwap.test";
+import "../development.ts";
+import {
+  btcSwapParams,
+  evmConditions,
+  evmTransaction,
+  evmClawbackTransaction,
+  successHash,
+  clawbackHash,
+  successTxHex,
+  clawbackTxHex,
+} from "../test/fixtures";
+import fetch from "node-fetch";
+import {
+  mockLitActionCheckConditions,
+  mockLitActionGetLatestNonce,
+  mockLitActionSignEcdsa,
+} from "../development";
+const pkpBtcAddress =
+  "tb1palt6npxah07t92ylud0ls0mwqak5jwneuckqecsww5935usx5g7sggxm7a";
+const pkpAddress = "0xF4cA21Df3009b640b6c6efEEEc7BD7640A97aF15";
+const authSig = "";
+const pkpPublicKey = "";
 
-const btcSwapParams = "{{btcSwapParams}}" as any;
-const evmConditions = "{{evmConditions}}" as any;
-const evmTransaction = "{{evmTransaction}}" as any;
-const evmClawbackTransaction = "{{evmClawbackTransaction}}" as any;
-const btcTransaction = "{{btcTransaction}}" as any;
-const btcClawbackTransaction = "{{btcClawbackTransaction}}" as any;
+mockLitActionCheckConditions.mockImplementation((options: any) => true);
+mockLitActionGetLatestNonce.mockImplementation((options: any) => "0x00");
 
+// const btcSwapParams = "{{btcSwapParams}}" as any;
+// const evmConditions = "{{evmConditions}}" as any;
+// const evmTransaction = "{{evmTransaction}}" as any;
+// const evmClawbackTransaction = "{{evmClawbackTransaction}}" as any;
 evmTransaction.from = evmClawbackTransaction.from = pkpAddress;
-
-const pkpOriginTime = originTime ? originTime : Date.now();
 
 const hashTransaction = (tx: any) => {
   return ethers.utils.arrayify(
@@ -26,32 +50,40 @@ function checkHasThreeDaysPassed(previousTime: number) {
 }
 
 async function validateUtxo(passedInUtxo: UTXO) {
-  const utxoResponse = await fetch(
-    `https://mempool.space/api/address/${pkpBtcAddress}/utxo`,
-  );
-  const fetchUtxo = (await utxoResponse.json()) as UtxoResponse;
-  if (fetchUtxo.length === 0) {
-    return false;
+  try {
+    const utxoResponse = await fetch(
+      `https://mempool.space/testnet/api/address/${pkpBtcAddress}/utxo`,
+    );
+    const fetchUtxo = (await utxoResponse.json()) as UtxoResponse;
+    if (fetchUtxo.length === 0) {
+      return false;
+    }
+    const utxoToSpend = fetchUtxo[0];
+    if (utxoToSpend.value !== btcSwapParams.value) {
+      return false;
+    }
+    if (
+      utxoToSpend.txid !== passedInUtxo.txid ||
+      utxoToSpend.vout !== passedInUtxo.vout
+    ) {
+      return false;
+    }
+    return true;
+  } catch (e) {
+    throw new Error(`Could not validate UTXO: ${e}`);
   }
-  const utxoToSpend = fetchUtxo[0];
-  if (utxoToSpend.value !== btcSwapParams.value) {
-    return false;
-  }
-  if (
-    utxoToSpend.txid !== passedInUtxo.txid ||
-    utxoToSpend.vout !== passedInUtxo.vout
-  ) {
-    return false;
-  }
-  return true;
 }
 
 async function didSendBtc(address: string) {
-  const response = await fetch(
-    `https://mempool.space/api/address/${address}/txs`,
-  );
-  const transactions = await response.json();
-  return transactions.length > 0;
+  try {
+    const response = await fetch(
+      `https://mempool.space/testnet/api/address/${address}/txs`,
+    );
+    const transactions = (await response.json()) as any;
+    return transactions.length > 0;
+  } catch (e) {
+    throw new Error(`Could not check if BTC was sent: ${e}`);
+  }
 }
 
 export async function go() {
@@ -84,7 +116,7 @@ export async function go() {
         response = {
           ...response,
           evmTransaction,
-          btcTransaction,
+          btcTransaction: successTxHex,
         };
       } else if (checkHasThreeDaysPassed(originTime)) {
         await Lit.Actions.signEcdsa({
@@ -94,7 +126,7 @@ export async function go() {
         });
         response = {
           ...response,
-          btcTransaction: btcClawbackTransaction,
+          btcTransaction: clawbackTxHex,
         };
       } else {
         response = {
@@ -117,7 +149,7 @@ export async function go() {
         response = {
           ...response,
           evmTransaction,
-          btcTransaction,
+          btcTransaction: successTxHex,
         };
       } else if (checkHasThreeDaysPassed(originTime)) {
         await Lit.Actions.signEcdsa({
@@ -179,3 +211,5 @@ export async function go() {
   // check if clawback time has elapsed
   // if yes sign BTC clawback transaction
 }
+
+go();

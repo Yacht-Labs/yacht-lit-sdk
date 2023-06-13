@@ -1,5 +1,5 @@
 import {
-  PKP_CONTRACT_ADDRESS_MUMBAI,
+  PKP_CONTRACT_ADDRESS_LIT,
   PKP_PERMISSIONS_CONTRACT_ADDRESS,
 } from "../../src/constants/index";
 import { getBytesFromMultihash } from "../../src/utils";
@@ -66,7 +66,7 @@ describe("Mint Grant Burn Tests", () => {
   it("Mints a PKP with a token ID and public key", async () => {
     const pkpTokenData = await sdk.mintGrantBurnWithLitAction(ipfsCID);
     const pkpContract = new ethers.Contract(
-      PKP_CONTRACT_ADDRESS_MUMBAI,
+      PKP_CONTRACT_ADDRESS_LIT,
       PKPNFTContract.abi,
       provider,
     ) as PKPNFT;
@@ -89,7 +89,7 @@ describe("Mint Grant Burn Tests", () => {
 
   it("The tokenID has no owner", async () => {
     const pkpContract = new ethers.Contract(
-      PKP_CONTRACT_ADDRESS_MUMBAI,
+      PKP_CONTRACT_ADDRESS_LIT,
       PKPNFTContract.abi,
       provider,
     ) as PKPNFT;

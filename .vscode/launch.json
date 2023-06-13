@@ -11,6 +11,22 @@
       "program": "${workspaceFolder}/src/tsRunner.ts",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug LitAction",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**/*.js"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "args": ["${workspaceFolder}/src/BtcEthSwap.ts"],
+      "outputCapture": "std",
+      "sourceMaps": true,
+      "smartStep": true,
+      "protocol": "inspector",
+      "env": {}
     }
   ]
 }

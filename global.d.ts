@@ -13,6 +13,8 @@ declare global {
   const clawbackHash: Buffer;
   const passedInUtxo: UTXO;
   const originTime: number;
+  const successTxHex: string;
+  const clawbackTxHex: string;
 
   interface Action {
     setResponse: (options: { response: any }) => void;

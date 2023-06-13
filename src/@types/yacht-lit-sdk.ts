@@ -121,7 +121,7 @@ export type LitEthSwapParams = {
 export type LitBtcSwapParams = {
   counterPartyAddress: string;
   network: string;
-  amount: string;
+  value: number;
   ethAddress: string;
 };
 

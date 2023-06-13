@@ -1,5 +1,5 @@
 import { getBytesFromMultihash } from "./utils/lit";
-import { PKP_CONTRACT_ADDRESS_MUMBAI, VBYTES_PER_TX } from "./constants/index";
+import { PKP_CONTRACT_ADDRESS_LIT, VBYTES_PER_TX } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig, reverseBuffer, validator } from "./utils";
@@ -60,7 +60,7 @@ export class YachtLitSdk {
    */
   constructor({
     signer,
-    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
+    pkpContractAddress = PKP_CONTRACT_ADDRESS_LIT,
     btcTestNet = false,
     btcApiEndpoint = "https://blockstream.info",
   }: LitYachtSdkParams) {
@@ -274,6 +274,39 @@ export class YachtLitSdk {
     return transaction;
   }
 
+  public signBtcTxWithLitSignature(
+    transactionString: string,
+    litSignature: { s: string; r: string },
+    hashForSig: Buffer,
+    pkpPublicKey: string,
+  ) {
+    const compressedPoint = ecc.pointCompress(
+      Buffer.from(pkpPublicKey.replace("0x", ""), "hex"),
+      true,
+    );
+    const signature = Buffer.from(litSignature.r + litSignature.s, "hex");
+
+    const validSignature = validator(
+      Buffer.from(compressedPoint),
+      hashForSig,
+      signature,
+    );
+
+    if (!validSignature) throw new Error("Invalid signature");
+    const compiledSignature = bitcoin.script.compile([
+      bitcoin.script.signature.encode(
+        signature,
+        bitcoin.Transaction.SIGHASH_ALL,
+      ),
+      Buffer.from(compressedPoint.buffer),
+    ]);
+
+    const transaction = bitcoin.Transaction.fromHex(transactionString);
+
+    transaction.setInputScript(0, compiledSignature);
+    return transaction;
+  }
+
   /**
    * Broadcasts a signed transaction to the Bitcoin network
    * @param {bitcoin.Transaction} transaction - Signed transaction
@@ -401,7 +434,7 @@ export class YachtLitSdk {
     };
   }
 
-  private generateEVMNativeSwapCondition(conditionParams: {
+  public generateEVMNativeSwapCondition(conditionParams: {
     chain: string;
     amount: string;
   }): LitEVMNativeSwapCondition {
@@ -627,7 +660,7 @@ export class YachtLitSdk {
     ethParams: LitEthSwapParams;
   }) {
     try {
-      const { successHash, clawbackHash, utxo } =
+      const { successHash, clawbackHash, utxo, successTxHex, clawbackTxHex } =
         await this.prepareBtcSwapTransactions(
           btcParams,
           ethParams,
@@ -650,6 +683,8 @@ export class YachtLitSdk {
           successHash: successHash,
           clawbackHash: clawbackHash,
           passedInUtxo: utxo,
+          successTxHex,
+          clawbackTxHex,
         },
       });
       return response;
@@ -700,7 +735,9 @@ export class YachtLitSdk {
         bitcoin.Transaction.SIGHASH_ALL,
       );
       return {
+        successTxHex: btcSuccessTransaction.toHex(),
         successHash,
+        clawbackTxHex: btcClawbackTransaction.toHex(),
         clawbackHash,
         utxo,
       };
@@ -780,7 +817,7 @@ export class YachtLitSdk {
     return serialize(tx, encodedSignature);
   }
 
-  generateBtcEthSwapLitActionCode = async (
+  public generateBtcEthSwapLitActionCode = async (
     btcParams: LitBtcSwapParams,
     ethParams: LitEthSwapParams,
     fileName?: string,
