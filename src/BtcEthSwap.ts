@@ -4,8 +4,8 @@ const btcSwapParams = "{{btcSwapParams}}" as any;
 const evmConditions = "{{evmConditions}}" as any;
 const evmTransaction = "{{evmTransaction}}" as any;
 const evmClawbackTransaction = "{{evmClawbackTransaction}}" as any;
-const btcTransaction = "{{btcTransaction}}";
-const btcClawbackTransaction = "{{btcClawbackTransaction}}";
+const btcTransaction = "{{btcTransaction}}" as any;
+const btcClawbackTransaction = "{{btcClawbackTransaction}}" as any;
 
 evmTransaction.from = evmClawbackTransaction.from = pkpAddress;
 
