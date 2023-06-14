@@ -583,7 +583,7 @@ export class YachtLitSdk {
   }> {
     try {
       const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
-      const minedMintGrantBurnTx = await mintGrantBurnTx.wait(2);
+      const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
       const pkpTokenId = ethers.BigNumber.from(
         minedMintGrantBurnTx.logs[4].topics[3],
       ).toString();
@@ -829,7 +829,7 @@ export class YachtLitSdk {
     ethParams: LitEthSwapParams,
     fileName?: string,
   ) => {
-    const ethCondition = this.generateEVMNativeSwapCondition(ethParams);
+    const evmConditions = this.generateEVMNativeSwapCondition(ethParams);
     const unsignedEthTransaction = this.generateUnsignedEVMNativeTransaction({
       counterPartyAddress: btcParams.ethAddress,
       chain: ethParams.chain,
@@ -845,7 +845,7 @@ export class YachtLitSdk {
     const variablesToReplace = {
       btcSwapParams: JSON.stringify(btcParams),
       ethSwapParams: JSON.stringify(ethParams),
-      ethCondition: JSON.stringify(ethCondition),
+      evmConditions: JSON.stringify(evmConditions),
       unsignedEthTransaction: JSON.stringify(unsignedEthTransaction),
       unsignedEthClawbackTransaction: JSON.stringify(
         unsignedEthClawbackTransaction,

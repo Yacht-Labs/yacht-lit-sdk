@@ -3,7 +3,7 @@ const evmConditions = "{{evmConditions}}";
 const evmTransaction = "{{evmTransaction}}";
 const evmClawbackTransaction = "{{evmClawbackTransaction}}";
 evmTransaction.from = evmClawbackTransaction.from = pkpAddress;
-
+evmConditions.parameters = [pkpAddress];
 const hashTransaction = (tx) => {
   return ethers.utils.arrayify(
     ethers.utils.keccak256(
@@ -21,7 +21,7 @@ function checkHasThreeDaysPassed(previousTime) {
 async function validateUtxo(passedInUtxo) {
   try {
     const utxoResponse = await fetch(
-      `https://mempool.space/testnet/api/address/${pkpBtcAddress}/utxo`,
+      `https://aa13-72-80-171-211.ngrok-free.app/utxos?address=${pkpBtcAddress}`,
     );
     const fetchUtxo = await utxoResponse.json();
     if (fetchUtxo.length === 0) {
@@ -46,7 +46,7 @@ async function validateUtxo(passedInUtxo) {
 async function didSendBtc(address) {
   try {
     const response = await fetch(
-      `https://mempool.space/testnet/api/address/${address}/txs`,
+      `https://aa13-72-80-171-211.ngrok-free.app/txs?address=${pkpBtcAddress}`,
     );
     const transactions = await response.json();
     return transactions.length > 0;
@@ -58,10 +58,10 @@ async function didSendBtc(address) {
 async function go() {
   try {
     let response = {};
-    // const utxoIsValid = await validateUtxo(passedInUtxo);
-    // const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
-    const utxoIsValid = true;
-    const didSendBtcFromPkp = true;
+    const utxoIsValid = await validateUtxo(passedInUtxo);
+    const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
+    // const utxoIsValid = true;
+    // const didSendBtcFromPkp = true;
     const evmConditionsPass = await Lit.Actions.checkConditions({
       conditions: [evmConditions],
       authSig,

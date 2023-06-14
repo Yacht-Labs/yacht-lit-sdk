@@ -38,6 +38,8 @@ export function generateEthParams(): LitEthSwapParams {
 }
 
 describe("BTC Swap", () => {
+  const provider = new providers.JsonRpcProvider(getLitProviderUrl());
+  provider.pollingInterval = 1000;
   const wallet = new Wallet(
     getLitPrivateKey(),
     new providers.JsonRpcProvider(getLitProviderUrl()),
