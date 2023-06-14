@@ -1,5 +1,5 @@
 yarn global add dotenv-cli
-OUTPUT=$(dotenv ts-node ./src/utils/mintPKPandGetBitcoinAddress.ts)
+OUTPUT=$(dotenv ts-node ../src/utils/mintPKPandGetBitcoinAddress.ts)
 IFS='.' read -ra ADDR <<< "$OUTPUT"
 echo "BTC Address: ${ADDR[0]}"
 echo "Instructions: Send Testnet BTC to the above address and then press y to continue"

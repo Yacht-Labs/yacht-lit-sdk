@@ -7,6 +7,7 @@ import {
   getLitPrivateKey,
   getLitProviderUrl,
 } from "../../src/utils/environment";
+
 const ECPair = ECPairFactory(ecc);
 
 export function generateBtcParams(): LitBtcSwapParams {

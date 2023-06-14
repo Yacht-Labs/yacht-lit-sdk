@@ -10,19 +10,19 @@ import PKPPermissionsContract from "../../src/abis/PKPPermissions.json";
 import { PKPNFT } from "../../typechain-types/contracts/PKPNFT";
 import { PKPPermissions } from "../../typechain-types/contracts/PKPPermissions";
 import {
-  getMumbaiPrivateKey,
-  getMumbaiProviderUrl,
+  getLitPrivateKey,
+  getLitProviderUrl,
 } from "../../src/utils/environment";
 import { GasConfig } from "../../src";
 
-const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
+const provider = new ethers.providers.JsonRpcProvider(getLitProviderUrl());
 describe("Mint Grant Burn Tests", () => {
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // FAU TOKEN - GOERLI
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // TEST TOKEN - MUMBAI
   const sdk = new YachtLitSdk({
     signer: new ethers.Wallet(
       // Add private key with at least .2 TEST MATIC to .env file to pass tests
-      getMumbaiPrivateKey(),
+      getLitPrivateKey(),
       provider,
     ),
   });
@@ -129,6 +129,7 @@ describe("Mint Grant Burn Tests", () => {
       chainAGasConfig: dummyGasConfig,
       chainBGasConfig: dummyGasConfig,
     });
-    expect(response.response).toEqual("Conditions for swap not met!");
+    console.log(response);
+    expect(response.response.response).toEqual("Conditions for swap not met!");
   }, 10000);
 });

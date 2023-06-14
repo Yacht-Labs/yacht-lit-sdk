@@ -1,10 +1,10 @@
-import { getMumbaiPrivateKey, getMumbaiProviderUrl } from "./environment";
+import { getLitPrivateKey, getLitProviderUrl } from "./environment";
 import { Wallet, providers } from "ethers";
 import { YachtLitSdk } from "../sdk";
 
 const wallet = new Wallet(
-  getMumbaiPrivateKey(),
-  new providers.JsonRpcProvider(getMumbaiProviderUrl()),
+  "f61166ca58f9ce75c66bcd2649cf2ba97fe68bbeba5f1b9ee7e158cd33a51b49",
+  new providers.JsonRpcProvider("https://chain-rpc.litprotocol.com/http"),
 );
 const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
 
