@@ -29,3 +29,11 @@ export const getMumbaiProviderUrl = (): string => {
 export const getBitcoinAddress = (): string => {
   return readEnv("BITCOIN_TESTNET_ADDRESS");
 };
+
+export const getLitProviderUrl = (): string => {
+  return readEnv("LIT_RPC_PROVIDER_URL");
+};
+
+export const getLitPrivateKey = (): string => {
+  return readEnv("LIT_PRIVATE_KEY");
+};

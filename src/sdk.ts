@@ -3,7 +3,7 @@ import { PKP_CONTRACT_ADDRESS_LIT, VBYTES_PER_TX } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig, reverseBuffer, validator } from "./utils";
-import LitJsSdk from "@lit-protocol/sdk-nodejs";
+import * as LitJsSdk from "@lit-protocol/lit-node-client-nodejs";
 import { uploadToIPFS } from "./utils/ipfs";
 import {
   arrayify,
@@ -65,9 +65,9 @@ export class YachtLitSdk {
     btcApiEndpoint = "https://blockstream.info",
   }: LitYachtSdkParams) {
     this.signer = signer ? signer : ethers.Wallet.createRandom();
-    this.litClient = new LitJsSdk.LitNodeClient({
+    this.litClient = new LitJsSdk.LitNodeClientNodeJs({
       litNetwork: "serrano",
-      debug: false,
+      debug: true,
     });
     this.pkpContract = new ethers.Contract(
       pkpContractAddress,
@@ -439,15 +439,15 @@ export class YachtLitSdk {
     amount: string;
   }): LitEVMNativeSwapCondition {
     return {
-      conditionType: "evmBasic",
+      //conditionType: "evmBasic",
       contractAddress: "",
       standardContractType: "",
-      chain: conditionParams.chain,
+      chain: "ethereum",
       method: "eth_getBalance",
       parameters: ["address"],
       returnValueTest: {
         comparator: ">=",
-        value: conditionParams.amount,
+        value: ethers.utils.parseEther(conditionParams.amount).toString(),
       },
     };
   }
@@ -553,8 +553,8 @@ export class YachtLitSdk {
     try {
       const feeData = await this.signer.provider.getFeeData();
       const mintPkpTx = await this.pkpContract.mintNext(2, {
-        value: 1e14,
-        maxFeePerGas: feeData.maxFeePerGas as ethers.BigNumber,
+        value: ethers.BigNumber.from("1"),
+        gasPrice: ethers.BigNumber.from("1000000"),
       });
       const minedMintPkpTx = await mintPkpTx.wait(2);
       const pkpTokenId = ethers.BigNumber.from(
@@ -585,7 +585,7 @@ export class YachtLitSdk {
       const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
       const minedMintGrantBurnTx = await mintGrantBurnTx.wait(2);
       const pkpTokenId = ethers.BigNumber.from(
-        minedMintGrantBurnTx.logs[1].topics[3],
+        minedMintGrantBurnTx.logs[4].topics[3],
       ).toString();
       const publicKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
       return {
@@ -608,8 +608,8 @@ export class YachtLitSdk {
         2,
         getBytesFromMultihash(ipfsCID),
         {
-          value: 1e14,
-          maxFeePerGas: feeData.maxFeePerGas as ethers.BigNumber,
+          value: ethers.BigNumber.from("1"),
+          gasPrice: ethers.BigNumber.from("1000000"),
         },
       );
     } catch (err) {
@@ -642,7 +642,6 @@ export class YachtLitSdk {
 
   async runBtcEthSwapLitAction({
     pkpPublicKey,
-    ipfsCID,
     code,
     authSig,
     ethGasConfig,
@@ -651,8 +650,7 @@ export class YachtLitSdk {
     btcParams,
   }: {
     pkpPublicKey: string;
-    ipfsCID: string;
-    code?: string;
+    code: string;
     authSig?: any;
     ethGasConfig: GasConfig;
     btcFeeRate: number;
@@ -664,13 +662,12 @@ export class YachtLitSdk {
         await this.prepareBtcSwapTransactions(
           btcParams,
           ethParams,
-          ipfsCID,
+          code,
           pkpPublicKey,
           btcFeeRate,
         );
       await this.connect();
       const response = await this.litClient.executeJs({
-        ipfsId: ipfsCID,
         code: code,
         authSig: authSig ? authSig : await this.generateAuthSig(),
         jsParams: {
@@ -696,7 +693,7 @@ export class YachtLitSdk {
   private async prepareBtcSwapTransactions(
     btcParams: LitBtcSwapParams,
     ethParams: LitEthSwapParams,
-    ipfsCID: string,
+    code: string,
     pkpPublicKey: string,
     btcFeeRate: number,
   ) {
@@ -704,7 +701,8 @@ export class YachtLitSdk {
       const checksum = await this.getIPFSHash(
         await this.generateBtcEthSwapLitActionCode(btcParams, ethParams),
       );
-      if (checksum !== ipfsCID) {
+      const codeChecksum = await this.getIPFSHash(code);
+      if (checksum !== codeChecksum) {
         throw new Error(
           "IPFS CID does not match generated Lit Action code.  You may have the incorrect parameters.",
         );
@@ -713,7 +711,10 @@ export class YachtLitSdk {
       // get ipfsCID
       // if it doesnt match throw an error
       const btcAddress = this.generateBtcAddress(pkpPublicKey);
-      const utxo = await this.getUtxoByAddress(btcAddress);
+      const utxo = await this.getUtxoByAddress(
+        //btcAddress
+        "tb1palt6npxah07t92ylud0ls0mwqak5jwneuckqecsww5935usx5g7sggxm7a",
+      );
       const btcSuccessTransaction = this.prepareTransactionForSignature({
         utxo,
         recipientAddress: ethParams.btcAddress,
@@ -721,7 +722,10 @@ export class YachtLitSdk {
       });
       const successHash = btcSuccessTransaction.hashForSignature(
         0,
-        toOutputScript(btcAddress),
+        toOutputScript(
+          btcAddress,
+          this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+        ),
         bitcoin.Transaction.SIGHASH_ALL,
       );
       const btcClawbackTransaction = this.prepareTransactionForSignature({
@@ -731,7 +735,10 @@ export class YachtLitSdk {
       });
       const clawbackHash = btcClawbackTransaction.hashForSignature(
         0,
-        toOutputScript(btcAddress),
+        toOutputScript(
+          btcAddress,
+          this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+        ),
         bitcoin.Transaction.SIGHASH_ALL,
       );
       return {

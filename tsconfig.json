@@ -1,5 +1,6 @@
 {
   "include": ["src/**/*", "./global.d.ts", "./development.ts"],
+  "files": ["./hardhat.config.ts"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
 

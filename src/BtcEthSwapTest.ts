@@ -1,10 +1,41 @@
-const btcSwapParams = "{{btcSwapParams}}";
-const evmConditions = "{{evmConditions}}";
-const evmTransaction = "{{evmTransaction}}";
-const evmClawbackTransaction = "{{evmClawbackTransaction}}";
+import { UTXO, UtxoResponse } from "./@types/yacht-lit-sdk";
+import {
+  generateBtcParams,
+  generateEthParams,
+} from "../test/unit/BtcSwap.test";
+import "../development.ts";
+import {
+  btcSwapParams,
+  evmConditions,
+  evmTransaction,
+  evmClawbackTransaction,
+  successHash,
+  clawbackHash,
+  successTxHex,
+  clawbackTxHex,
+} from "../test/fixtures";
+import fetch from "node-fetch";
+import {
+  mockLitActionCheckConditions,
+  mockLitActionGetLatestNonce,
+  mockLitActionSignEcdsa,
+} from "../development";
+const pkpBtcAddress =
+  "tb1palt6npxah07t92ylud0ls0mwqak5jwneuckqecsww5935usx5g7sggxm7a";
+const pkpAddress = "0xF4cA21Df3009b640b6c6efEEEc7BD7640A97aF15";
+const authSig = "";
+const pkpPublicKey = "";
+
+mockLitActionCheckConditions.mockImplementation((options: any) => true);
+mockLitActionGetLatestNonce.mockImplementation((options: any) => "0x00");
+
+// const btcSwapParams = "{{btcSwapParams}}" as any;
+// const evmConditions = "{{evmConditions}}" as any;
+// const evmTransaction = "{{evmTransaction}}" as any;
+// const evmClawbackTransaction = "{{evmClawbackTransaction}}" as any;
 evmTransaction.from = evmClawbackTransaction.from = pkpAddress;
 
-const hashTransaction = (tx) => {
+const hashTransaction = (tx: any) => {
   return ethers.utils.arrayify(
     ethers.utils.keccak256(
       ethers.utils.arrayify(ethers.utils.serializeTransaction(tx)),
@@ -12,18 +43,18 @@ const hashTransaction = (tx) => {
   );
 };
 
-function checkHasThreeDaysPassed(previousTime) {
+function checkHasThreeDaysPassed(previousTime: number) {
   const currentTime = Date.now();
   const difference = currentTime - previousTime;
   return difference / (1000 * 3600 * 24) >= 3 ? true : false;
 }
 
-async function validateUtxo(passedInUtxo) {
+async function validateUtxo(passedInUtxo: UTXO) {
   try {
     const utxoResponse = await fetch(
       `https://mempool.space/testnet/api/address/${pkpBtcAddress}/utxo`,
     );
-    const fetchUtxo = await utxoResponse.json();
+    const fetchUtxo = (await utxoResponse.json()) as UtxoResponse;
     if (fetchUtxo.length === 0) {
       return false;
     }
@@ -43,25 +74,23 @@ async function validateUtxo(passedInUtxo) {
   }
 }
 
-async function didSendBtc(address) {
+async function didSendBtc(address: string) {
   try {
     const response = await fetch(
       `https://mempool.space/testnet/api/address/${address}/txs`,
     );
-    const transactions = await response.json();
+    const transactions = (await response.json()) as any;
     return transactions.length > 0;
   } catch (e) {
     throw new Error(`Could not check if BTC was sent: ${e}`);
   }
 }
 
-async function go() {
+export async function go() {
   try {
-    let response = {};
-    // const utxoIsValid = await validateUtxo(passedInUtxo);
-    // const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
-    const utxoIsValid = true;
-    const didSendBtcFromPkp = true;
+    let response: Record<any, any> = {};
+    const utxoIsValid = await validateUtxo(passedInUtxo);
+    const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
     const evmConditionsPass = await Lit.Actions.checkConditions({
       conditions: [evmConditions],
       authSig,
@@ -150,7 +179,7 @@ async function go() {
     });
   } catch (err) {
     Lit.Actions.setResponse({
-      response: JSON.stringify({ error: err.message }),
+      response: JSON.stringify({ error: (err as Error).message }),
     });
   }
 

@@ -1,38 +1,9 @@
 import { UTXO, UtxoResponse } from "./@types/yacht-lit-sdk";
-import {
-  generateBtcParams,
-  generateEthParams,
-} from "../test/unit/BtcSwap.test";
-import "../development.ts";
-import {
-  btcSwapParams,
-  evmConditions,
-  evmTransaction,
-  evmClawbackTransaction,
-  successHash,
-  clawbackHash,
-  successTxHex,
-  clawbackTxHex,
-} from "../test/fixtures";
-import fetch from "node-fetch";
-import {
-  mockLitActionCheckConditions,
-  mockLitActionGetLatestNonce,
-  mockLitActionSignEcdsa,
-} from "../development";
-const pkpBtcAddress =
-  "tb1palt6npxah07t92ylud0ls0mwqak5jwneuckqecsww5935usx5g7sggxm7a";
-const pkpAddress = "0xF4cA21Df3009b640b6c6efEEEc7BD7640A97aF15";
-const authSig = "";
-const pkpPublicKey = "";
 
-mockLitActionCheckConditions.mockImplementation((options: any) => true);
-mockLitActionGetLatestNonce.mockImplementation((options: any) => "0x00");
-
-// const btcSwapParams = "{{btcSwapParams}}" as any;
-// const evmConditions = "{{evmConditions}}" as any;
-// const evmTransaction = "{{evmTransaction}}" as any;
-// const evmClawbackTransaction = "{{evmClawbackTransaction}}" as any;
+const btcSwapParams = "{{btcSwapParams}}" as any;
+const evmConditions = "{{evmConditions}}" as any;
+const evmTransaction = "{{evmTransaction}}" as any;
+const evmClawbackTransaction = "{{evmClawbackTransaction}}" as any;
 evmTransaction.from = evmClawbackTransaction.from = pkpAddress;
 
 const hashTransaction = (tx: any) => {
@@ -89,8 +60,10 @@ async function didSendBtc(address: string) {
 export async function go() {
   try {
     let response: Record<any, any> = {};
-    const utxoIsValid = await validateUtxo(passedInUtxo);
-    const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
+    // const utxoIsValid = await validateUtxo(passedInUtxo);
+    // const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
+    const utxoIsValid = true;
+    const didSendBtcFromPkp = true;
     const evmConditionsPass = await Lit.Actions.checkConditions({
       conditions: [evmConditions],
       authSig,

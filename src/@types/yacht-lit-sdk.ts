@@ -31,7 +31,7 @@ export type LitERC20SwapCondition = {
 };
 
 export type LitEVMNativeSwapCondition = {
-  conditionType: "evmBasic";
+  //conditionType: "evmBasic";
   contractAddress: "";
   standardContractType: "";
   chain: string;
