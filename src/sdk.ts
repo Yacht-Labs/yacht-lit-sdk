@@ -141,6 +141,9 @@ export class YachtLitSdk {
       if (!firstUtxo) {
         throw new Error("No utxos found for address");
       }
+      if (firstUtxo.status.confirmed === false) {
+        throw new Error("First utxo is unconfirmed");
+      }
       return firstUtxo as UTXO;
     } catch (err) {
       throw new Error("Error fetching utxos: " + err);

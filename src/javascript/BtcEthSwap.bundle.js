@@ -49,7 +49,10 @@ async function didSendBtc(address) {
       `https://aa13-72-80-171-211.ngrok-free.app/txs?address=${pkpBtcAddress}`,
     );
     const transactions = await response.json();
-    return transactions.length > 0;
+    if (transactions.length === 0) {
+      throw new Error("No transactions found on pkp btc address");
+    }
+    return transactions.length > 1;
   } catch (e) {
     throw new Error(`Could not check if BTC was sent: ${e}`);
   }
@@ -60,8 +63,6 @@ async function go() {
     let response = {};
     const utxoIsValid = await validateUtxo(passedInUtxo);
     const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
-    // const utxoIsValid = true;
-    // const didSendBtcFromPkp = true;
     const evmConditionsPass = await Lit.Actions.checkConditions({
       conditions: [evmConditions],
       authSig,
