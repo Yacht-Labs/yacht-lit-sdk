@@ -559,9 +559,9 @@ export class YachtLitSdk {
         value: ethers.BigNumber.from("1"),
         gasPrice: ethers.BigNumber.from("1000000"),
       });
-      const minedMintPkpTx = await mintPkpTx.wait(2);
+      const minedMintPkpTx = await mintPkpTx.wait();
       const pkpTokenId = ethers.BigNumber.from(
-        minedMintPkpTx.logs[1].topics[3],
+        minedMintPkpTx.logs[0].topics[3],
       ).toString();
       const publicKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
       return {
@@ -988,7 +988,7 @@ export class YachtLitSdk {
             return;
           }
           if (!threeDaysHasPassed) {
-            Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+            Lit.Actions.setResponse({ response: JSON.stringify({ response: "Conditions for swap not met!" })});
             return;
           }
           await Lit.Actions.signEcdsa({
@@ -1010,7 +1010,7 @@ export class YachtLitSdk {
             return;
           }
           if (!threeDaysHasPassed) {
-            Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+            Lit.Actions.setResponse({ response: JSON.stringify({ response: "Conditions for swap not met!" })});
             return;
           }
           await Lit.Actions.signEcdsa({
@@ -1025,7 +1025,7 @@ export class YachtLitSdk {
           });
           return;
         }
-        Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+        Lit.Actions.setResponse({ response: JSON.stringify({ response: "Conditions for swap not met!" })});
       }
     go();
     `;
