@@ -714,10 +714,7 @@ export class YachtLitSdk {
       // get ipfsCID
       // if it doesnt match throw an error
       const btcAddress = this.generateBtcAddress(pkpPublicKey);
-      const utxo = await this.getUtxoByAddress(
-        //btcAddress
-        "tb1palt6npxah07t92ylud0ls0mwqak5jwneuckqecsww5935usx5g7sggxm7a",
-      );
+      const utxo = await this.getUtxoByAddress(btcAddress);
       const btcSuccessTransaction = this.prepareTransactionForSignature({
         utxo,
         recipientAddress: ethParams.btcAddress,
