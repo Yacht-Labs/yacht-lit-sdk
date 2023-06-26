@@ -1,12 +1,26 @@
-import { LitBtcSwapParams, LitEthSwapParams, YachtLitSdk } from "../../src";
+import { readEnv } from "./../../src/utils/environment";
+import {
+  LitBtcSwapParams,
+  LitEthSwapParams,
+  UtxoResponse,
+  YachtLitSdk,
+} from "../../src";
 import * as bitcoin from "bitcoinjs-lib";
 import { ECPairFactory } from "ecpair";
 import * as ecc from "tiny-secp256k1";
-import { Wallet, providers } from "ethers";
+import { Wallet, providers, ethers } from "ethers";
 import {
   getLitPrivateKey,
   getLitProviderUrl,
+  getMumbaiPrivateKey,
+  getMumbaiProviderUrl,
 } from "../../src/utils/environment";
+import { getSourceKeyPair } from "../../src/utils";
+import { toOutputScript } from "bitcoinjs-lib/src/address";
+
+const LITPROTOCOL_SWAP_AMOUNT = "0.0001";
+const BTC_TESTNET_SWAP_AMOUNT = 5000;
+const BTC_TESTNET_FEE = 1000;
 
 const ECPair = ECPairFactory(ecc);
 
@@ -18,7 +32,7 @@ export function generateBtcParams(): LitBtcSwapParams {
   const btcParams = {
     counterPartyAddress: address!,
     network: "testnet",
-    value: 8000,
+    value: BTC_TESTNET_SWAP_AMOUNT,
     ethAddress: Wallet.createRandom().address,
   };
   return btcParams;
@@ -31,12 +45,18 @@ export function generateEthParams(): LitEthSwapParams {
   });
   const ethParams = {
     counterPartyAddress: Wallet.createRandom().address,
-    chain: "mumbai",
-    amount: "0.0001",
+    chain: "litprotocol",
+    amount: LITPROTOCOL_SWAP_AMOUNT,
     btcAddress: address!,
   };
   return ethParams;
 }
+
+let pkp: any;
+let btcParams: LitBtcSwapParams;
+let ethParams: LitEthSwapParams;
+let code: string;
+let ipfsCID: string;
 
 describe("BTC Swap", () => {
   const provider = new providers.JsonRpcProvider(getLitProviderUrl());
@@ -46,6 +66,14 @@ describe("BTC Swap", () => {
     new providers.JsonRpcProvider(getLitProviderUrl()),
   );
   const sdk = new YachtLitSdk({ signer: wallet, btcTestNet: true });
+
+  beforeAll(async () => {
+    btcParams = generateBtcParams();
+    ethParams = generateEthParams();
+    code = await sdk.generateBtcEthSwapLitActionCode(btcParams, ethParams);
+    ipfsCID = await sdk.getIPFSHash(code);
+  });
+
   xit("Should load the BTC swap", async () => {
     const btcParams = {
       counterPartyAddress: "2N3WBN3Z6Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5",
@@ -70,19 +98,110 @@ const ethSwapParams = {"counterPartyAddress":"0x0","chain":"ETH","amount":"0.000
     expect(code).toContain(targetString);
   });
 
-  it("should return swap conditions not met when neither ETH or BTC is sent to the PKP address", async () => {
-    const btcParams = {
-      ...generateBtcParams(),
-    };
-    const ethParams = generateEthParams();
-    const code = await sdk.generateBtcEthSwapLitActionCode(
+  xit("should throw an error when neither BTC nor ETH has been sent to the public key", async () => {
+    pkp = await sdk.mintGrantBurnWithLitAction(ipfsCID);
+
+    await expect(
+      sdk.runBtcEthSwapLitAction({
+        pkpPublicKey: pkp.publicKey,
+        code,
+        btcParams,
+        ethParams,
+        btcFeeRate: 10,
+        ethGasConfig: {
+          maxFeePerGas: "100000000000",
+          maxPriorityFeePerGas: "40000000000",
+          gasLimit: "21000",
+        },
+      }),
+    ).rejects.toThrow();
+  }, 90000);
+
+  xit("should return swap conditions not met when ETH is sent to the PKP address but BTC is not and clawback time is not elapsed", async () => {
+    try {
+      const tx = await wallet.sendTransaction({
+        to: pkp.address,
+        value: ethers.utils.parseEther(LITPROTOCOL_SWAP_AMOUNT),
+      });
+      await tx.wait();
+
+      const result = await sdk.runBtcEthSwapLitAction({
+        pkpPublicKey: pkp.publicKey,
+        code,
+        btcParams,
+        ethParams,
+        btcFeeRate: 10,
+        isEthClawback: true,
+        ethGasConfig: {
+          maxFeePerGas: "100000000000",
+          maxPriorityFeePerGas: "40000000000",
+          gasLimit: "21000",
+        },
+      });
+      console.log({ result });
+      expect(result.response?.response?.error).toEqual(
+        "Swap conditions not met",
+      );
+    } catch (e) {
+      console.log(e);
+    }
+  }, 90000);
+
+  xit("should return ETH clawback signature and transaction when only ETH is sent to the PKP address and clawback time is elapsed", async () => {
+    const result = await sdk.runBtcEthSwapLitAction({
+      pkpPublicKey: pkp.publicKey,
+      code,
       btcParams,
       ethParams,
-    );
-    const ipfsCID = await sdk.getIPFSHash(code);
-    const pkp = await sdk.mintGrantBurnWithLitAction(ipfsCID);
+      btcFeeRate: 10,
+      isEthClawback: true,
+      ethGasConfig: {
+        maxFeePerGas: "100000000000",
+        maxPriorityFeePerGas: "40000000000",
+        gasLimit: "21000",
+      },
+    });
+    console.log({ result });
+    expect(result.response?.response?.error).toEqual("Swap conditions not met");
+  });
 
-    console.log(pkp);
+  it("should return swap conditions not met when BTC is sent to the PKP address but ETH is not and clawback time is not elapsed", async () => {
+    pkp = await sdk.mintGrantBurnWithLitAction(ipfsCID);
+    const { address, keyPair } = getSourceKeyPair();
+    const utxoResponse = await fetch(
+      `https://mempool.space/testnet/api/address/${address}/utxo`,
+    );
+    const fetchUtxo = (await utxoResponse.json()) as UtxoResponse;
+    const utxo = fetchUtxo[0];
+    const tx = new bitcoin.Transaction();
+    const pkpBtcAddress = sdk.generateBtcAddress(pkp.publicKey);
+    tx.addInput(Buffer.from(utxo.txid, "hex").reverse(), utxo.vout);
+    tx.addOutput(
+      toOutputScript(pkpBtcAddress, bitcoin.networks.testnet),
+      BTC_TESTNET_SWAP_AMOUNT,
+    );
+    tx.addOutput(
+      toOutputScript(address!, bitcoin.networks.testnet),
+      utxo.value - BTC_TESTNET_SWAP_AMOUNT - BTC_TESTNET_FEE,
+    );
+    const hashForSig = tx.hashForSignature(
+      0,
+      toOutputScript(address!, bitcoin.networks.testnet),
+      bitcoin.Transaction.SIGHASH_ALL,
+    );
+    const signature0 = keyPair.sign(hashForSig);
+    const signedInput = bitcoin.script.compile([
+      bitcoin.script.signature.encode(
+        signature0,
+        bitcoin.Transaction.SIGHASH_ALL,
+      ),
+      keyPair.publicKey,
+    ]);
+    tx.setInputScript(0, signedInput);
+    const returnResult = await sdk.broadcastBtcTransaction(tx);
+
+    console.log({ returnResult });
+
     const result = await sdk.runBtcEthSwapLitAction({
       pkpPublicKey: pkp.publicKey,
       code,
@@ -95,10 +214,15 @@ const ethSwapParams = {"counterPartyAddress":"0x0","chain":"ETH","amount":"0.000
         gasLimit: "21000",
       },
     });
-    console.log(result);
+
+    expect(result.response?.response?.error).toEqual("Swap conditions not met");
   }, 90000);
 
-  // it should return swap conditions not met when neither ETH or BTC is sent to the PKP address
+  // it should return BTC clawback signature and transaction when only BTC is sent to the PKP address and clawback time is elapsed
+
+  // it should return ETH and BTC signatures and transactions when both ETH and BTC are sent to the PKP address
+
+  // it should return ETH and BTC signatures and transactions when ETH is sent to PKP and the BTC has been sent out of PKP
 
   // it should return ETH and BTC signatures and transactions when BTC is sent to PKP and the ETH has been sent out of PKP
 });

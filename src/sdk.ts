@@ -1,3 +1,4 @@
+import { successHash, clawbackHash } from "./../test/fixtures";
 import { getBytesFromMultihash } from "./utils/lit";
 import { PKP_CONTRACT_ADDRESS_LIT, VBYTES_PER_TX } from "./constants/index";
 import { ethers } from "ethers";
@@ -24,6 +25,7 @@ import {
   LitEVMNativeSwapCondition,
   LitEthSwapParams,
   LitBtcSwapParams,
+  LitBtcEthSwapResponse,
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
 import * as bitcoin from "bitcoinjs-lib";
@@ -651,6 +653,7 @@ export class YachtLitSdk {
     btcFeeRate,
     ethParams,
     btcParams,
+    isEthClawback = false,
   }: {
     pkpPublicKey: string;
     code: string;
@@ -659,16 +662,20 @@ export class YachtLitSdk {
     btcFeeRate: number;
     btcParams: LitBtcSwapParams;
     ethParams: LitEthSwapParams;
-  }) {
+    isEthClawback?: boolean;
+  }): Promise<LitBtcEthSwapResponse> {
     try {
-      const { successHash, clawbackHash, utxo, successTxHex, clawbackTxHex } =
-        await this.prepareBtcSwapTransactions(
-          btcParams,
-          ethParams,
-          code,
-          pkpPublicKey,
-          btcFeeRate,
-        );
+      let successHash, clawbackHash, utxo, successTxHex, clawbackTxHex;
+      if (!isEthClawback) {
+        ({ successHash, clawbackHash, utxo, successTxHex, clawbackTxHex } =
+          await this.prepareBtcSwapTransactions(
+            btcParams,
+            ethParams,
+            code,
+            pkpPublicKey,
+            btcFeeRate,
+          ));
+      }
       await this.connect();
       const response = await this.litClient.executeJs({
         code: code,
@@ -710,9 +717,6 @@ export class YachtLitSdk {
           "IPFS CID does not match generated Lit Action code.  You may have the incorrect parameters.",
         );
       }
-      // generate lit action code with eth and btc params
-      // get ipfsCID
-      // if it doesnt match throw an error
       const btcAddress = this.generateBtcAddress(pkpPublicKey);
       const utxo = await this.getUtxoByAddress(btcAddress);
       const btcSuccessTransaction = this.prepareTransactionForSignature({

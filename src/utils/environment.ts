@@ -37,3 +37,7 @@ export const getLitProviderUrl = (): string => {
 export const getLitPrivateKey = (): string => {
   return readEnv("LIT_PRIVATE_KEY");
 };
+
+export const getBtcTestnetWif = (): string => {
+  return readEnv("BTC_TESTNET_WIF");
+};

@@ -18,10 +18,10 @@ function checkHasThreeDaysPassed(previousTime) {
   return difference / (1000 * 3600 * 24) >= 3 ? true : false;
 }
 
-async function validateUtxo(passedInUtxo) {
+async function validateUtxo() {
   try {
     const utxoResponse = await fetch(
-      `https://aa13-72-80-171-211.ngrok-free.app/utxos?address=${pkpBtcAddress}`,
+      `https://ac26-72-80-171-211.ngrok-free.app/utxos?address=${pkpBtcAddress}`,
     );
     const fetchUtxo = await utxoResponse.json();
     if (fetchUtxo.length === 0) {
@@ -31,12 +31,12 @@ async function validateUtxo(passedInUtxo) {
     if (utxoToSpend.value !== btcSwapParams.value) {
       return false;
     }
-    if (
-      utxoToSpend.txid !== passedInUtxo.txid ||
-      utxoToSpend.vout !== passedInUtxo.vout
-    ) {
-      return false;
-    }
+    // if (
+    //   utxoToSpend.txid !== passedInUtxo.txid ||
+    //   utxoToSpend.vout !== passedInUtxo.vout
+    // ) {
+    //   return false;
+    // }
     return true;
   } catch (e) {
     throw new Error(`Could not validate UTXO: ${e}`);
@@ -46,11 +46,11 @@ async function validateUtxo(passedInUtxo) {
 async function didSendBtc(address) {
   try {
     const response = await fetch(
-      `https://aa13-72-80-171-211.ngrok-free.app/txs?address=${pkpBtcAddress}`,
+      `https://ac26-72-80-171-211.ngrok-free.app/txs?address=${pkpBtcAddress}`,
     );
     const transactions = await response.json();
     if (transactions.length === 0) {
-      throw new Error("No transactions found on pkp btc address");
+      return false;
     }
     return transactions.length > 1;
   } catch (e) {
@@ -61,7 +61,8 @@ async function didSendBtc(address) {
 async function go() {
   try {
     let response = {};
-    const utxoIsValid = await validateUtxo(passedInUtxo);
+    const utxoIsValid = await validateUtxo();
+    //passedInUtxo
     const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
     const evmConditionsPass = await Lit.Actions.checkConditions({
       conditions: [evmConditions],

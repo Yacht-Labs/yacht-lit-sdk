@@ -53,6 +53,20 @@ export type LitSwapTransaction = {
   nonce?: number | undefined;
 };
 
+export type LitBtcEthSwapResponse = {
+  response?: {
+    response?: {
+      error?: string;
+      evmTransaction?: any;
+      btcTransaction?: any;
+    };
+  };
+  signatures?: {
+    evmSignature?: LitSignature;
+    btcSignature?: LitSignature;
+  };
+};
+
 export type LitActionCodeResponseA = {
   response: {
     chainATransaction?: {
@@ -147,6 +161,7 @@ export const LitChainIds: { [key: string]: number } = {
   ropsten: 3,
   rinkeby: 4,
   cronos: 25,
+  litprotocol: 175177,
   optimism: 10,
   celo: 42220,
   aurora: 1313161554,
