@@ -59,6 +59,8 @@ export type LitBtcEthSwapResponse = {
       error?: string;
       evmTransaction?: any;
       btcTransaction?: any;
+      evmClawbackTransaction?: any;
+      btcClawbackTransaction?: any;
     };
   };
   signatures?: {

@@ -143,9 +143,9 @@ export class YachtLitSdk {
       if (!firstUtxo) {
         throw new Error("No utxos found for address");
       }
-      if (firstUtxo.status.confirmed === false) {
-        throw new Error("First utxo is unconfirmed");
-      }
+      // if (firstUtxo.status.confirmed === false) {
+      //   throw new Error("First utxo is unconfirmed");
+      // }
       return firstUtxo as UTXO;
     } catch (err) {
       throw new Error("Error fetching utxos: " + err);
@@ -447,7 +447,7 @@ export class YachtLitSdk {
       //conditionType: "evmBasic",
       contractAddress: "",
       standardContractType: "",
-      chain: "ethereum",
+      chain: conditionParams.chain,
       method: "eth_getBalance",
       parameters: ["address"],
       returnValueTest: {
@@ -504,7 +504,7 @@ export class YachtLitSdk {
       from: transactionParams.from
         ? transactionParams.from
         : "{{pkpPublicKey}}",
-      value: transactionParams.amount,
+      value: ethers.utils.parseEther(transactionParams.amount).toString(),
       type: 2,
     };
   }
@@ -654,6 +654,9 @@ export class YachtLitSdk {
     ethParams,
     btcParams,
     isEthClawback = false,
+    originTime,
+    utxoIsValid,
+    didSendBtcFromPkp,
   }: {
     pkpPublicKey: string;
     code: string;
@@ -663,6 +666,9 @@ export class YachtLitSdk {
     btcParams: LitBtcSwapParams;
     ethParams: LitEthSwapParams;
     isEthClawback?: boolean;
+    originTime?: number;
+    utxoIsValid?: boolean;
+    didSendBtcFromPkp?: boolean;
   }): Promise<LitBtcEthSwapResponse> {
     try {
       let successHash, clawbackHash, utxo, successTxHex, clawbackTxHex;
@@ -692,6 +698,9 @@ export class YachtLitSdk {
           passedInUtxo: utxo,
           successTxHex,
           clawbackTxHex,
+          utxoIsValid,
+          didSendBtcFromPkp,
+          originTime,
         },
       });
       return response;
@@ -850,10 +859,8 @@ export class YachtLitSdk {
       btcSwapParams: JSON.stringify(btcParams),
       ethSwapParams: JSON.stringify(ethParams),
       evmConditions: JSON.stringify(evmConditions),
-      unsignedEthTransaction: JSON.stringify(unsignedEthTransaction),
-      unsignedEthClawbackTransaction: JSON.stringify(
-        unsignedEthClawbackTransaction,
-      ),
+      evmTransaction: JSON.stringify(unsignedEthTransaction),
+      evmClawbackTransaction: JSON.stringify(unsignedEthClawbackTransaction),
     };
 
     return await this.loadActionCode(variablesToReplace, fileName);

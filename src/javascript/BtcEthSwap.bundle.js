@@ -61,9 +61,9 @@ async function didSendBtc(address) {
 async function go() {
   try {
     let response = {};
-    const utxoIsValid = await validateUtxo();
+    // const utxoIsValid = await validateUtxo();
     //passedInUtxo
-    const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
+    // const didSendBtcFromPkp = await didSendBtc(pkpBtcAddress);
     const evmConditionsPass = await Lit.Actions.checkConditions({
       conditions: [evmConditions],
       authSig,
@@ -99,7 +99,7 @@ async function go() {
         });
         response = {
           ...response,
-          btcTransaction: clawbackTxHex,
+          btcClawbackTransaction: clawbackTxHex,
         };
       } else {
         response = {
@@ -132,7 +132,7 @@ async function go() {
         });
         response = {
           ...response,
-          evmTransaction: evmClawbackTransaction,
+          evmClawbackTransaction: evmClawbackTransaction,
         };
       } else {
         response = {
