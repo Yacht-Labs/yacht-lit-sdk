@@ -17,7 +17,7 @@ import {
   getGoerliPrivateKey,
   getGoerliProviderUrl,
 } from "../../src/utils/environment";
-import { getSourceKeyPair } from "../../src/utils";
+import { getSourceKeyPair, sleep } from "../../src/utils";
 import { toOutputScript } from "bitcoinjs-lib/src/address";
 
 const EVM_SWAP_AMOUNT = "0.0001";
@@ -81,7 +81,7 @@ describe("BTC Swap", () => {
     ethParams = generateEthParams();
     code = await sdk.generateBtcEthSwapLitActionCode(btcParams, ethParams);
     ipfsCID = await sdk.getIPFSHash(code);
-  });
+  }, 90000);
 
   xit("Should load the BTC swap", async () => {
     const btcParams = {
@@ -372,6 +372,7 @@ const ethSwapParams = {"counterPartyAddress":"0x0","chain":"ETH","amount":"0.000
     ]);
     tx.setInputScript(0, signedInput);
     const returnResult = await sdk.broadcastBtcTransaction(tx);
+    await sleep(4000);
 
     const result = await sdk.runBtcEthSwapLitAction({
       pkpPublicKey: pkp.publicKey,
@@ -391,6 +392,4 @@ const ethSwapParams = {"counterPartyAddress":"0x0","chain":"ETH","amount":"0.000
     expect(result.response?.response?.btcTransaction).toBeDefined();
     expect(result.response?.response?.evmTransaction).toBeDefined();
   }, 90000);
-
-  // it should return ETH and BTC signatures and transactions when BTC is sent to PKP and the ETH has been sent out of PKP
 });
