@@ -1,5 +1,5 @@
 import {
-  PKP_CONTRACT_ADDRESS_MUMBAI,
+  PKP_CONTRACT_ADDRESS_LIT,
   PKP_PERMISSIONS_CONTRACT_ADDRESS,
 } from "../../src/constants/index";
 import { getBytesFromMultihash } from "../../src/utils";
@@ -10,19 +10,19 @@ import PKPPermissionsContract from "../../src/abis/PKPPermissions.json";
 import { PKPNFT } from "../../typechain-types/contracts/PKPNFT";
 import { PKPPermissions } from "../../typechain-types/contracts/PKPPermissions";
 import {
-  getMumbaiPrivateKey,
-  getMumbaiProviderUrl,
+  getLitPrivateKey,
+  getLitProviderUrl,
 } from "../../src/utils/environment";
 import { GasConfig } from "../../src";
 
-const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
+const provider = new ethers.providers.JsonRpcProvider(getLitProviderUrl());
 describe("Mint Grant Burn Tests", () => {
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // FAU TOKEN - GOERLI
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // TEST TOKEN - MUMBAI
   const sdk = new YachtLitSdk({
     signer: new ethers.Wallet(
       // Add private key with at least .2 TEST MATIC to .env file to pass tests
-      getMumbaiPrivateKey(),
+      getLitPrivateKey(),
       provider,
     ),
   });
@@ -66,7 +66,7 @@ describe("Mint Grant Burn Tests", () => {
   it("Mints a PKP with a token ID and public key", async () => {
     const pkpTokenData = await sdk.mintGrantBurnWithLitAction(ipfsCID);
     const pkpContract = new ethers.Contract(
-      PKP_CONTRACT_ADDRESS_MUMBAI,
+      PKP_CONTRACT_ADDRESS_LIT,
       PKPNFTContract.abi,
       provider,
     ) as PKPNFT;
@@ -89,7 +89,7 @@ describe("Mint Grant Burn Tests", () => {
 
   it("The tokenID has no owner", async () => {
     const pkpContract = new ethers.Contract(
-      PKP_CONTRACT_ADDRESS_MUMBAI,
+      PKP_CONTRACT_ADDRESS_LIT,
       PKPNFTContract.abi,
       provider,
     ) as PKPNFT;
@@ -98,7 +98,7 @@ describe("Mint Grant Burn Tests", () => {
 
   it("The PKP should not allow arbitrary Lit Action execution", async () => {
     const authSig = await sdk.generateAuthSig();
-    const response = await sdk.runLitAction({
+    const response = await sdk.runErc20SwapLitAction({
       authSig,
       pkpPublicKey: pkpNftPublicKey,
       code: `const go = async () => {
@@ -122,13 +122,14 @@ describe("Mint Grant Burn Tests", () => {
 
   it("The PKP can successfully execute the Lit Action that was granted", async () => {
     const authSig = await sdk.generateAuthSig();
-    const response = await sdk.runLitAction({
+    const response = await sdk.runErc20SwapLitAction({
       authSig,
       pkpPublicKey: pkpNftPublicKey,
       code: LitActionCode + randomNonce,
       chainAGasConfig: dummyGasConfig,
       chainBGasConfig: dummyGasConfig,
     });
-    expect(response.response).toEqual("Conditions for swap not met!");
+    console.log(response);
+    expect(response.response.response).toEqual("Conditions for swap not met!");
   }, 10000);
 });

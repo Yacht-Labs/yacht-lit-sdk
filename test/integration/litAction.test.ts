@@ -4,6 +4,8 @@ import { expect } from "chai";
 import {
   getGoerliPrivateKey,
   getGoerliProviderUrl,
+  getLitPrivateKey,
+  getLitProviderUrl,
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
 } from "../../src/utils/environment";
@@ -19,13 +21,21 @@ describe("Lit Action Code Tests", () => {
   const mumbaiProvider = new ethers.providers.JsonRpcProvider(
     getMumbaiProviderUrl(),
   );
+  const chronicleProvider = new ethers.providers.JsonRpcProvider(
+    getLitProviderUrl(),
+  );
+  chronicleProvider.pollingInterval = 1000;
+  mumbaiProvider.pollingInterval = 1000;
+  goerliProvider.pollingInterval = 1000;
+  const litSigner = new Wallet(getLitPrivateKey(), chronicleProvider);
   const counterPartyAWallet = new Wallet(getGoerliPrivateKey(), goerliProvider);
   const counterPartyBWallet = new Wallet(getMumbaiPrivateKey(), mumbaiProvider);
   const counterPartyAAddress = counterPartyAWallet.address;
   const counterPartyBAddress = counterPartyBWallet.address;
   const tokenAAddress = "0xBA62BCfcAaFc6622853cca2BE6Ac7d845BC0f2Dc"; // GOERLI FAU TOKEN
   const tokenBAddress = "0xeDb95D8037f769B72AAab41deeC92903A98C9E16"; // MUMBAI TEST TOKEN
-  const sdk = new YachtLitSdk({ signer: counterPartyBWallet });
+
+  const sdk = new YachtLitSdk({ signer: litSigner });
 
   const tokenAContract = new ethers.Contract(
     tokenAAddress,
@@ -71,16 +81,17 @@ describe("Lit Action Code Tests", () => {
           pkpTokenData.address,
           ethers.utils.parseUnits("10", 18),
         )
-      ).wait(2);
+      ).wait();
+
       await (
         await tokenBContract.mint(
           pkpTokenData.address,
           ethers.utils.parseUnits("10", 18),
         )
-      ).wait(2);
+      ).wait();
 
       const authSig = await sdk.generateAuthSig();
-      response = await sdk.runLitAction({
+      response = await sdk.runErc20SwapLitAction({
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
@@ -176,10 +187,10 @@ describe("Lit Action Code Tests", () => {
           pkpTokenData.address,
           ethers.utils.parseUnits("10", 18),
         )
-      ).wait(2);
+      ).wait();
 
       const authSig = await sdk.generateAuthSig();
-      response = await sdk.runLitAction({
+      response = await sdk.runErc20SwapLitAction({
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,
@@ -222,10 +233,10 @@ describe("Lit Action Code Tests", () => {
           pkpTokenData.address,
           ethers.utils.parseUnits("10", 18),
         )
-      ).wait(2);
+      ).wait();
 
       const authSig = await sdk.generateAuthSig();
-      response = await sdk.runLitAction({
+      response = await sdk.runErc20SwapLitAction({
         authSig,
         pkpPublicKey: pkpTokenData.publicKey,
         code: LitActionCode,

@@ -30,6 +30,19 @@ export type LitERC20SwapCondition = {
   };
 };
 
+export type LitEVMNativeSwapCondition = {
+  //conditionType: "evmBasic";
+  contractAddress: "";
+  standardContractType: "";
+  chain: string;
+  method: "eth_getBalance";
+  parameters: [string];
+  returnValueTest: {
+    comparator: ">=";
+    value: string;
+  };
+};
+
 export type LitSwapTransaction = {
   counterPartyAddress: string;
   tokenAddress: string;
@@ -38,6 +51,22 @@ export type LitSwapTransaction = {
   decimals: number;
   from?: string | undefined;
   nonce?: number | undefined;
+};
+
+export type LitBtcEthSwapResponse = {
+  response?: {
+    response?: {
+      error?: string;
+      evmTransaction?: any;
+      btcTransaction?: any;
+      evmClawbackTransaction?: any;
+      btcClawbackTransaction?: any;
+    };
+  };
+  signatures?: {
+    evmSignature?: LitSignature;
+    btcSignature?: LitSignature;
+  };
 };
 
 export type LitActionCodeResponseA = {
@@ -78,12 +107,38 @@ export type LitActionCodeResponse = {
   };
 };
 
+export type UtxoResponse = {
+  txid: string;
+  vout: number;
+  status: {
+    confirmed: boolean;
+    block_height: number;
+    block_hash: string;
+    block_time: number;
+  };
+  value: number;
+}[];
+
 export type LitERC20SwapParams = {
   counterPartyAddress: string;
   tokenAddress: string;
   chain: string;
   amount: string;
   decimals: number;
+};
+
+export type LitEthSwapParams = {
+  counterPartyAddress: string;
+  chain: string;
+  amount: string;
+  btcAddress: string;
+};
+
+export type LitBtcSwapParams = {
+  counterPartyAddress: string;
+  network: string;
+  value: number;
+  ethAddress: string;
 };
 
 export interface LitYachtSdkParams {
@@ -108,6 +163,7 @@ export const LitChainIds: { [key: string]: number } = {
   ropsten: 3,
   rinkeby: 4,
   cronos: 25,
+  litprotocol: 175177,
   optimism: 10,
   celo: 42220,
   aurora: 1313161554,

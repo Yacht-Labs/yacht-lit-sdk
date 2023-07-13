@@ -1,9 +1,10 @@
+import { successHash, clawbackHash } from "./../test/fixtures";
 import { getBytesFromMultihash } from "./utils/lit";
-import { PKP_CONTRACT_ADDRESS_MUMBAI, VBYTES_PER_TX } from "./constants/index";
+import { PKP_CONTRACT_ADDRESS_LIT, VBYTES_PER_TX } from "./constants/index";
 import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig, reverseBuffer, validator } from "./utils";
-import LitJsSdk from "@lit-protocol/sdk-nodejs";
+import * as LitJsSdk from "@lit-protocol/lit-node-client-nodejs";
 import { uploadToIPFS } from "./utils/ipfs";
 import {
   arrayify,
@@ -21,12 +22,18 @@ import {
   GasConfig,
   UTXO,
   LitYachtSdkParams,
+  LitEVMNativeSwapCondition,
+  LitEthSwapParams,
+  LitBtcSwapParams,
+  LitBtcEthSwapResponse,
 } from "./@types/yacht-lit-sdk";
 import Hash from "ipfs-only-hash";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import fetch from "node-fetch";
 import { toOutputScript } from "bitcoinjs-lib/src/address";
+import fs from "fs";
+import path from "path";
 
 export class YachtLitSdk {
   private pkpContract: PKPNFT;
@@ -55,14 +62,14 @@ export class YachtLitSdk {
    */
   constructor({
     signer,
-    pkpContractAddress = PKP_CONTRACT_ADDRESS_MUMBAI,
+    pkpContractAddress = PKP_CONTRACT_ADDRESS_LIT,
     btcTestNet = false,
     btcApiEndpoint = "https://blockstream.info",
   }: LitYachtSdkParams) {
     this.signer = signer ? signer : ethers.Wallet.createRandom();
-    this.litClient = new LitJsSdk.LitNodeClient({
+    this.litClient = new LitJsSdk.LitNodeClientNodeJs({
       litNetwork: "serrano",
-      debug: false,
+      debug: true,
     });
     this.pkpContract = new ethers.Contract(
       pkpContractAddress,
@@ -136,6 +143,9 @@ export class YachtLitSdk {
       if (!firstUtxo) {
         throw new Error("No utxos found for address");
       }
+      // if (firstUtxo.status.confirmed === false) {
+      //   throw new Error("First utxo is unconfirmed");
+      // }
       return firstUtxo as UTXO;
     } catch (err) {
       throw new Error("Error fetching utxos: " + err);
@@ -269,6 +279,39 @@ export class YachtLitSdk {
     return transaction;
   }
 
+  public signBtcTxWithLitSignature(
+    transactionString: string,
+    litSignature: { s: string; r: string },
+    hashForSig: Buffer,
+    pkpPublicKey: string,
+  ) {
+    const compressedPoint = ecc.pointCompress(
+      Buffer.from(pkpPublicKey.replace("0x", ""), "hex"),
+      true,
+    );
+    const signature = Buffer.from(litSignature.r + litSignature.s, "hex");
+
+    const validSignature = validator(
+      Buffer.from(compressedPoint),
+      hashForSig,
+      signature,
+    );
+
+    if (!validSignature) throw new Error("Invalid signature");
+    const compiledSignature = bitcoin.script.compile([
+      bitcoin.script.signature.encode(
+        signature,
+        bitcoin.Transaction.SIGHASH_ALL,
+      ),
+      Buffer.from(compressedPoint.buffer),
+    ]);
+
+    const transaction = bitcoin.Transaction.fromHex(transactionString);
+
+    transaction.setInputScript(0, compiledSignature);
+    return transaction.toHex();
+  }
+
   /**
    * Broadcasts a signed transaction to the Bitcoin network
    * @param {bitcoin.Transaction} transaction - Signed transaction
@@ -396,6 +439,24 @@ export class YachtLitSdk {
     };
   }
 
+  public generateEVMNativeSwapCondition(conditionParams: {
+    chain: string;
+    amount: string;
+  }): LitEVMNativeSwapCondition {
+    return {
+      //conditionType: "evmBasic",
+      contractAddress: "",
+      standardContractType: "",
+      chain: conditionParams.chain,
+      method: "eth_getBalance",
+      parameters: ["address"],
+      returnValueTest: {
+        comparator: ">=",
+        value: ethers.utils.parseEther(conditionParams.amount).toString(),
+      },
+    };
+  }
+
   /**
    * Utility function for generating an unsigned ERC20 transaction.
    * @param transactionParams
@@ -424,6 +485,26 @@ export class YachtLitSdk {
           .parseUnits(transactionParams.amount, transactionParams.decimals)
           .toString(),
       ),
+      type: 2,
+    };
+  }
+
+  generateUnsignedEVMNativeTransaction(transactionParams: {
+    counterPartyAddress: string;
+    chain: string;
+    amount: string;
+    from?: string;
+    nonce?: number;
+  }): LitUnsignedTransaction {
+    return {
+      to: transactionParams.counterPartyAddress,
+      nonce: transactionParams.nonce ? transactionParams.nonce : 0,
+      chainId: LitChainIds[transactionParams.chain],
+      gasLimit: "21000",
+      from: transactionParams.from
+        ? transactionParams.from
+        : "{{pkpPublicKey}}",
+      value: ethers.utils.parseEther(transactionParams.amount).toString(),
       type: 2,
     };
   }
@@ -477,12 +558,12 @@ export class YachtLitSdk {
     try {
       const feeData = await this.signer.provider.getFeeData();
       const mintPkpTx = await this.pkpContract.mintNext(2, {
-        value: 1e14,
-        maxFeePerGas: feeData.maxFeePerGas as ethers.BigNumber,
+        value: ethers.BigNumber.from("1"),
+        gasPrice: ethers.BigNumber.from("1000000"),
       });
-      const minedMintPkpTx = await mintPkpTx.wait(2);
+      const minedMintPkpTx = await mintPkpTx.wait();
       const pkpTokenId = ethers.BigNumber.from(
-        minedMintPkpTx.logs[1].topics[3],
+        minedMintPkpTx.logs[0].topics[3],
       ).toString();
       const publicKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
       return {
@@ -507,9 +588,9 @@ export class YachtLitSdk {
   }> {
     try {
       const mintGrantBurnTx = await this.mintGrantBurn(ipfsCID);
-      const minedMintGrantBurnTx = await mintGrantBurnTx.wait(2);
+      const minedMintGrantBurnTx = await mintGrantBurnTx.wait();
       const pkpTokenId = ethers.BigNumber.from(
-        minedMintGrantBurnTx.logs[1].topics[3],
+        minedMintGrantBurnTx.logs[4].topics[3],
       ).toString();
       const publicKey = await this.getPubKeyByPKPTokenId(pkpTokenId);
       return {
@@ -532,8 +613,8 @@ export class YachtLitSdk {
         2,
         getBytesFromMultihash(ipfsCID),
         {
-          value: 1e14,
-          maxFeePerGas: feeData.maxFeePerGas as ethers.BigNumber,
+          value: ethers.BigNumber.from("1"),
+          gasPrice: ethers.BigNumber.from("1000000"),
         },
       );
     } catch (err) {
@@ -564,6 +645,127 @@ export class YachtLitSdk {
     return generateAuthSig(this.signer, chainId, uri, version);
   }
 
+  async runBtcEthSwapLitAction({
+    pkpPublicKey,
+    code,
+    authSig,
+    ethGasConfig,
+    btcFeeRate,
+    ethParams,
+    btcParams,
+    isEthClawback = false,
+    originTime,
+    utxoIsValid,
+    didSendBtcFromPkp,
+  }: {
+    pkpPublicKey: string;
+    code: string;
+    authSig?: any;
+    ethGasConfig: GasConfig;
+    btcFeeRate: number;
+    btcParams: LitBtcSwapParams;
+    ethParams: LitEthSwapParams;
+    isEthClawback?: boolean;
+    originTime?: number;
+    utxoIsValid?: boolean;
+    didSendBtcFromPkp?: boolean;
+  }): Promise<LitBtcEthSwapResponse> {
+    try {
+      let successHash, clawbackHash, utxo, successTxHex, clawbackTxHex;
+      if (!isEthClawback) {
+        ({ successHash, clawbackHash, utxo, successTxHex, clawbackTxHex } =
+          await this.prepareBtcSwapTransactions(
+            btcParams,
+            ethParams,
+            code,
+            pkpPublicKey,
+            btcFeeRate,
+          ));
+      }
+      await this.connect();
+      const response = await this.litClient.executeJs({
+        code: code,
+        authSig: authSig ? authSig : await this.generateAuthSig(),
+        jsParams: {
+          pkpAddress: ethers.utils.computeAddress(pkpPublicKey),
+          pkpBtcAddress: this.generateBtcAddress(pkpPublicKey),
+          pkpPublicKey: pkpPublicKey,
+          authSig: authSig ? authSig : await this.generateAuthSig(),
+          ethGasConfig: ethGasConfig,
+          btcFeeRate: btcFeeRate,
+          successHash: successHash,
+          clawbackHash: clawbackHash,
+          passedInUtxo: utxo,
+          successTxHex,
+          clawbackTxHex,
+          utxoIsValid,
+          didSendBtcFromPkp,
+          originTime,
+        },
+      });
+      return response;
+    } catch (e) {
+      throw new Error(`Error running btc eth swap lit action: ${e}`);
+    }
+  }
+
+  private async prepareBtcSwapTransactions(
+    btcParams: LitBtcSwapParams,
+    ethParams: LitEthSwapParams,
+    code: string,
+    pkpPublicKey: string,
+    btcFeeRate: number,
+  ) {
+    try {
+      const checksum = await this.getIPFSHash(
+        await this.generateBtcEthSwapLitActionCode(btcParams, ethParams),
+      );
+      const codeChecksum = await this.getIPFSHash(code);
+      if (checksum !== codeChecksum) {
+        throw new Error(
+          "IPFS CID does not match generated Lit Action code.  You may have the incorrect parameters.",
+        );
+      }
+      const btcAddress = this.generateBtcAddress(pkpPublicKey);
+      const utxo = await this.getUtxoByAddress(btcAddress);
+      const btcSuccessTransaction = this.prepareTransactionForSignature({
+        utxo,
+        recipientAddress: ethParams.btcAddress,
+        fee: btcFeeRate,
+      });
+      const successHash = btcSuccessTransaction.hashForSignature(
+        0,
+        toOutputScript(
+          btcAddress,
+          this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+        ),
+        bitcoin.Transaction.SIGHASH_ALL,
+      );
+      const btcClawbackTransaction = this.prepareTransactionForSignature({
+        utxo,
+        recipientAddress: btcParams.counterPartyAddress,
+        fee: btcFeeRate,
+      });
+      const clawbackHash = btcClawbackTransaction.hashForSignature(
+        0,
+        toOutputScript(
+          btcAddress,
+          this.btcTestNet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+        ),
+        bitcoin.Transaction.SIGHASH_ALL,
+      );
+      return {
+        successTxHex: btcSuccessTransaction.toHex(),
+        successHash,
+        clawbackTxHex: btcClawbackTransaction.toHex(),
+        clawbackHash,
+        utxo,
+      };
+    } catch (err) {
+      throw new Error(`Error in runBtcEthSwapLitAction: ${err}`);
+    }
+  }
+
   /**
    * Executes the Lit Action code associated with the given PKP.  If the swap conditions have been met, then it will respond with the transactions that need to be signed. If not, it will respond with the string "Conditions for swap not met!"
    * @param {Object} LitActionParameters - Information needed to execute a Lit Action for a cross chain atomic swap
@@ -574,7 +776,7 @@ export class YachtLitSdk {
    * @param {code}
    * @returns
    */
-  async runLitAction({
+  async runErc20SwapLitAction({
     pkpPublicKey,
     ipfsCID,
     code,
@@ -633,6 +835,77 @@ export class YachtLitSdk {
     const signer = new SigningKey("0x" + privateKey);
     const encodedSignature = signer.signDigest(message);
     return serialize(tx, encodedSignature);
+  }
+
+  public generateBtcEthSwapLitActionCode = async (
+    btcParams: LitBtcSwapParams,
+    ethParams: LitEthSwapParams,
+    fileName?: string,
+  ) => {
+    const evmConditions = this.generateEVMNativeSwapCondition(ethParams);
+    const unsignedEthTransaction = this.generateUnsignedEVMNativeTransaction({
+      counterPartyAddress: btcParams.ethAddress,
+      chain: ethParams.chain,
+      amount: ethParams.amount,
+    });
+    const unsignedEthClawbackTransaction =
+      this.generateUnsignedEVMNativeTransaction({
+        counterPartyAddress: ethParams.counterPartyAddress,
+        chain: ethParams.chain,
+        amount: ethParams.amount,
+      });
+
+    const variablesToReplace = {
+      btcSwapParams: JSON.stringify(btcParams),
+      ethSwapParams: JSON.stringify(ethParams),
+      evmConditions: JSON.stringify(evmConditions),
+      evmTransaction: JSON.stringify(unsignedEthTransaction),
+      evmClawbackTransaction: JSON.stringify(unsignedEthClawbackTransaction),
+    };
+
+    return await this.loadActionCode(variablesToReplace, fileName);
+  };
+
+  private async loadActionCode(
+    variables: Record<string, string>,
+    fileName?: string,
+  ): Promise<string> {
+    const resolvedFilename = fileName ? fileName : "BtcEthSwap.bundle.js";
+    const filePath = path.join(__dirname, "javascript", resolvedFilename);
+    try {
+      const code = await new Promise<string>((resolve, reject) => {
+        fs.readFile(filePath, "utf8", (err, data) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
+      });
+
+      return this.replaceCodeVariables(code, variables);
+    } catch (err) {
+      console.log(`Error loading Lit action code: ${err}`);
+      return "";
+    }
+  }
+
+  /* 
+  example usage: 
+  const variables = {
+    hardEthPrice: "42069",
+    hardEthPayoutAddress: "0x48F9E3AD6fe234b60c90dAa2A4f9eb5a247a74C3",
+  };
+  replaceVariables(code, variables);
+  */
+  private replaceCodeVariables(content: string, variables: any) {
+    let result = content;
+    for (const key in variables) {
+      const placeholder = `"{{${key}}}"`;
+      const value = variables[key];
+      result = result.split(placeholder).join(value);
+    }
+    return result;
   }
 
   private generateERC20SwapLitActionCode = (
@@ -726,7 +999,7 @@ export class YachtLitSdk {
             return;
           }
           if (!threeDaysHasPassed) {
-            Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+            Lit.Actions.setResponse({ response: JSON.stringify({ response: "Conditions for swap not met!" })});
             return;
           }
           await Lit.Actions.signEcdsa({
@@ -748,7 +1021,7 @@ export class YachtLitSdk {
             return;
           }
           if (!threeDaysHasPassed) {
-            Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+            Lit.Actions.setResponse({ response: JSON.stringify({ response: "Conditions for swap not met!" })});
             return;
           }
           await Lit.Actions.signEcdsa({
@@ -763,7 +1036,7 @@ export class YachtLitSdk {
           });
           return;
         }
-        Lit.Actions.setResponse({ response: "Conditions for swap not met!" });
+        Lit.Actions.setResponse({ response: JSON.stringify({ response: "Conditions for swap not met!" })});
       }
     go();
     `;

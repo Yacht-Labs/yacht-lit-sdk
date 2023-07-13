@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ethers } from "ethers";
 import { YachtLitSdk } from "../../src";
-import { PKP_CONTRACT_ADDRESS_MUMBAI } from "../../src/constants";
+import { PKP_CONTRACT_ADDRESS_LIT } from "../../src/constants";
 import {
+  getLitPrivateKey,
+  getLitProviderUrl,
   getMumbaiPrivateKey,
   getMumbaiProviderUrl,
 } from "../../src/utils/environment";
@@ -10,11 +12,12 @@ import PKPNFTContract from "../../src/abis/PKPNFT.json";
 import { PKPNFT } from "../../typechain-types/contracts/PKPNFT";
 
 describe("Mint PKP", () => {
-  const provider = new ethers.providers.JsonRpcProvider(getMumbaiProviderUrl());
-  const wallet = new ethers.Wallet(getMumbaiPrivateKey(), provider);
+  const provider = new ethers.providers.JsonRpcProvider(getLitProviderUrl());
+  provider.pollingInterval = 1000;
+  const wallet = new ethers.Wallet(getLitPrivateKey(), provider);
   const sdk = new YachtLitSdk({ signer: wallet });
   const pkpContract = new ethers.Contract(
-    PKP_CONTRACT_ADDRESS_MUMBAI,
+    PKP_CONTRACT_ADDRESS_LIT,
     PKPNFTContract.abi,
     provider,
   ) as PKPNFT;
