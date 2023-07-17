@@ -2,7 +2,7 @@ import { UTXO, UtxoResponse } from "./@types/yacht-lit-sdk";
 import {
   generateBtcParams,
   generateEthParams,
-} from "../test/unit/BtcSwap.test";
+} from "../test/unit/BtcSwapTests/BtcSwap.test";
 import "../development.ts";
 import {
   btcSwapParams,

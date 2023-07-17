@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 import pkpNftContract from "./abis/PKPNFT.json";
 import { generateAuthSig, reverseBuffer, validator } from "./utils";
 import * as LitJsSdk from "@lit-protocol/lit-node-client-nodejs";
-import { uploadToIPFS } from "./utils/ipfs";
+//import { uploadToIPFS } from "./utils/ipfs";
 import {
   arrayify,
   keccak256,
@@ -514,14 +514,14 @@ export class YachtLitSdk {
    * @param {string} code - The Lit Action code to be uploaded to IPFS
    * @returns {string} The IPFS CID to locate your record
    */
-  async uploadToIPFS(code: string): Promise<string> {
-    try {
-      const { path } = await uploadToIPFS(code);
-      return path;
-    } catch (err) {
-      throw new Error(`Error uploading to IPFS: ${err}`);
-    }
-  }
+  // async uploadToIPFS(code: string): Promise<string> {
+  //   try {
+  //     const { path } = await uploadToIPFS(code);
+  //     return path;
+  //   } catch (err) {
+  //     throw new Error(`Error uploading to IPFS: ${err}`);
+  //   }
+  // }
 
   /**
    *
