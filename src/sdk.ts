@@ -44,7 +44,7 @@ export class YachtLitSdk {
 
   /**
    * @constructor
-   * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Polygon Mumbai provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
+   * Instantiates an instance of the Yacht atomic swap SDK powered by Lit Protocol.  If you want to mint a PKP, then you will need to attach an ethers Wallet with a Lit Chronicle provider.  For generating Lit Action code and executing Lit Actions, you do not need a signer
    * @param signer - The wallet that will be used to mint a PKP and generate auth sigs
    * @param pkpContractAddress - The address of the PKP NFT contract - defaults to the Mumbai testnet address
    * @param btcTestNet - Whether or not to use the Bitcoin testnet - defaults to false
@@ -537,7 +537,7 @@ export class YachtLitSdk {
   }
 
   /**
-   * Mints a PKP NFT on the Polygon Mumbai network using the provided signer
+   * Mints a PKP NFT on the Lit Chronicle network using the provided signer
    * @returns {Promise<{tokenId: string; publicKey: string; address: string}>} tokenId, publicKey, and address of the minted NFT
    * @throws Error if signer not set
    * @throws Error if signer provider not set
@@ -577,7 +577,7 @@ export class YachtLitSdk {
   }
 
   /**
-   * Mints a PKP NFT on the Polygon Mumbai network, attaches the Lit Action code to the PKP, then burns the PKP so that the code attached to the PKP cannot be changed.
+   * Mints a PKP NFT on the Lit Chronicle network, attaches the Lit Action code to the PKP, then burns the PKP so that the code attached to the PKP cannot be changed.
    * @param ipfsCID - The IPFS cid where your Lit Action code is stored
    * @returns PKP info with tokenID, publicKey, and address
    */
